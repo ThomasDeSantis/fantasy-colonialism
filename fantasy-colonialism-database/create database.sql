@@ -1,0 +1,1 @@
+CREATE DATABASE fantasy-colonialism-backend-dev;
