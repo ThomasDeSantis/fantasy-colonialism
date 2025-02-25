@@ -101,7 +101,7 @@ namespace FantasyColonialismBackend
             }
             Console.WriteLine("Finished INSERTing white points into DB: " + DateTime.UtcNow.ToString());
             //Update the average center of each province in the DB
-            calculateProvincesAverages(database);
+            Province.calculateProvincesAverages(database);
 
 
             Console.WriteLine("Finished calculating province average x & y: " + DateTime.UtcNow.ToString());
