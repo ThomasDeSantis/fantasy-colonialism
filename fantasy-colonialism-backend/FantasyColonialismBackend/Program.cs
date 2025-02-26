@@ -25,5 +25,6 @@ dbCon.Password = connectionStringBuilder.Password;
 if (dbCon.IsConnect())
 {
     MapProvinceCreate.processImageIntoPoints("C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\test-continent-2.png", dbCon);
+    MapProvinceCreate.renderProvinces(dbCon, "C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\test-continent-2.png", "C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\output-2.png");
     dbCon.Close();
 }
