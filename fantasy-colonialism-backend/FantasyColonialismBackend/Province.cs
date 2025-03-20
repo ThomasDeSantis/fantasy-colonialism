@@ -72,5 +72,18 @@ namespace FantasyColonialismBackend
             }
             rdr.Close();
         }
+
+        public static List<int> getListOfProvinces(DBConnection database)
+        {
+            List<int> provinces = new List<int>();
+            var cmd = new MySqlCommand("SELECT DISTINCT id FROM provinces;", database.Connection);
+            var rdr = cmd.ExecuteReader();
+            while (rdr.Read())
+            {
+                provinces.Add(rdr.GetInt32(0));
+            }
+            rdr.Close();
+            return provinces;
+        }
     }
 }

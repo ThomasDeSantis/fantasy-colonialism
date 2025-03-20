@@ -1,5 +1,5 @@
 import './App.css'
-import testContinent from '/test-continent.png'
+import testContinent from '../../img/test-continent-2.png'
 
 function App() {
 

@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
+using Mysqlx.Crud;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -14,9 +17,22 @@ namespace FantasyColonialismBackend
 {
     class MapProvinceCreate
     {
-        private static string pointInsertQuery = "INSERT INTO points (id, x, y,provinceId) VALUES (@id, @x, @y,@provinceId)";
+        enum gridOrientation
+        {
+            topLeft,
+            topRight,
+            bottomLeft,
+            bottomRight,
+            topMiddle,
+            bottomMiddle,
+            leftMiddle,
+            rightMiddle
+        }
+        private static string pointInsertQuery = "INSERT INTO points (x, y,provinceId) VALUES (@x, @y,@provinceId)";
         private static string provinceInsertQuery = "INSERT INTO provinces (id) VALUES (@id)";
         private static string checkIfPointInAProvince = "SELECT provinceId FROM Points WHERE x = @x AND y = @y";
+        private static string edgeInsertQuery = "INSERT INTO renderEdges (x1,y1,x2,y2,provinceId) VALUES (@x1,@y1,@x2,@y2,@provinceId)";
+        private static string truncateRenderEdges = "TRUNCATE TABLE renderEdges";
         public static void processImageIntoPoints(string inputPath, DBConnection database)
         {
             Console.WriteLine("Image processing began: " + DateTime.UtcNow.ToString());
@@ -27,7 +43,7 @@ namespace FantasyColonialismBackend
 
             var pointCmd = new MySqlCommand(pointInsertQuery, database.Connection);
             var provinceCmd = new MySqlCommand(provinceInsertQuery, database.Connection);
-            using (Image<Rgba32> image = Image.Load<Rgba32>(inputPath))
+            using (SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath))
             {
                 for (int y = 0; y < image.Height; y++)
                 {
@@ -39,12 +55,6 @@ namespace FantasyColonialismBackend
                             //This is a white pixel
                             //Add it to the list of white points
                             whitePoints.Add((x, y));
-                            /*//Create a point in the database
-                            cmd.Parameters.AddWithValue("@id", pointId++);
-                            cmd.Parameters.AddWithValue("@x", x);
-                            cmd.Parameters.AddWithValue("@y", y);
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();*/
                         }
                         else if (color.R == 0 && color.G == 0 && color.B == 0)
                         {
@@ -158,11 +168,176 @@ namespace FantasyColonialismBackend
 
         }
 
+        //This function will populate the borders of each province in the DB
+        public static void populateEdgesTable(DBConnection database)
+        {
+            // Truncate the renderEdges table
+            var truncateCmd = new MySqlCommand(truncateRenderEdges, database.Connection);
+            truncateCmd.ExecuteNonQuery();
+
+            List<int> provinces = Province.getListOfProvinces(database);
+
+            string borderQuery = "SELECT x, y FROM borderPoints WHERE centerProvince = @provinceId;";
+            string provinceQuery = "SELECT x, y FROM Points WHERE provinceId = @provinceId;";
+
+            for(int i = 0; i < provinces.Count; i++)
+            {
+                var cmd = new MySqlCommand(borderQuery, database.Connection);
+                cmd.Parameters.AddWithValue("@provinceId", provinces[i]);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+
+                //Store each id, x, and y in a list
+                //These are the borders for your province
+                List<(int, int)> borderPoints = new List<(int, int)>();
+                while (rdr.Read())
+                {
+                    borderPoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+                }
+                rdr.Close();
+
+                var allPointsCmd = new MySqlCommand(provinceQuery, database.Connection);
+                allPointsCmd.Parameters.AddWithValue("@provinceId", provinces[i]);
+                rdr = allPointsCmd.ExecuteReader();
+
+                //Store all points of a province in a hashset so you can reference it to check if a point is bordered on that side or not
+                HashSet<(int, int)> provincePoints = new HashSet<(int, int)>();
+                while (rdr.Read())
+                {
+                    provincePoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+                }
+                rdr.Close();
+
+                foreach ((int, int) point in borderPoints)
+                {
+                    writeProvinceEdges(point, provincePoints, provinces[i], database);
+                }
+                Console.WriteLine("Finished province " + provinces[i]);
+            }
+
+        }
+
+        //point is the point for which you are writing edges to the database
+        //province points is a hash set that contains all points in the province
+        //provinceid is the id for the province which the point is running in
+        //database is the connection to the database
+        //This function runs through a point, checks the point on each sides, and calls a function to write the edge to the database
+        private static void writeProvinceEdges((int,int)point, HashSet<(int, int)> provincePoints,int provinceId, DBConnection database)
+        {
+            //Get the neighbors of the point
+            //0 - West
+            // 1 - East
+            // 2 - North
+            // 3 - South
+            var neighbors = Point.getNeighborsPlus(point);
+            //Check the western point
+            //x1 y1 vs x2 y2 should be in counter clockwise order
+            if (!provincePoints.Contains(neighbors[0]))
+            {
+                writeEdgeToDB(convertPointToGridPoint(point, gridOrientation.topLeft), convertPointToGridPoint(point, gridOrientation.bottomLeft),provinceId,database);
+            }
+            if (!provincePoints.Contains(neighbors[1]))
+            {
+                writeEdgeToDB(convertPointToGridPoint(point, gridOrientation.bottomRight), convertPointToGridPoint(point, gridOrientation.topRight), provinceId, database);
+            }
+            if (!provincePoints.Contains(neighbors[2]))
+            {
+                writeEdgeToDB(convertPointToGridPoint(point, gridOrientation.topRight), convertPointToGridPoint(point, gridOrientation.topLeft), provinceId, database);
+            }
+            if (!provincePoints.Contains(neighbors[3]))
+            {
+                writeEdgeToDB(convertPointToGridPoint(point, gridOrientation.bottomLeft), convertPointToGridPoint(point, gridOrientation.bottomRight), provinceId, database);
+            }
+        }
+
+        private static void writeEdgeToDB((decimal, decimal) p1, (decimal, decimal) p2, int provinceId, DBConnection database)
+        {
+
+            var edgeCmd = new MySqlCommand(edgeInsertQuery, database.Connection);
+            edgeCmd.Parameters.AddWithValue("@x1", p1.Item1);
+            edgeCmd.Parameters.AddWithValue("@y1", p1.Item2);
+
+            edgeCmd.Parameters.AddWithValue("@x2", p2.Item1);
+            edgeCmd.Parameters.AddWithValue("@y2", p2.Item2);
+
+
+            edgeCmd.Parameters.AddWithValue("@provinceId", provinceId);
+
+            edgeCmd.ExecuteNonQuery();
+        }
+
+        //We want to start looking for patterns at a top left corner
+        //This is defined by a point with nothing north and nothing east of it
+        //TODO:Handle case where there is no top left corner
+        private static (int, int) findStartingPoint(HashSet<(int, int)> borderPoints, HashSet<(int,int)> provincePoints)
+        {
+            var startingPoint = borderPoints.First();
+            Console.WriteLine(startingPoint.ToString() + " is used to start iteration.");
+            //While creating the border, start at a point in the province where there is no valid point north of it and no valid point east of it
+            bool topRight = false;
+            while (!topRight)
+            {
+
+
+                Console.WriteLine("Checking " + startingPoint.ToString() + ".");
+
+                //Get possible neighbors for the borders
+                var possiblePoints = Point.getNeighborsPlus((startingPoint.Item1, startingPoint.Item2));
+                Console.WriteLine("Center point...\nBorder point: " + borderPoints.Contains(startingPoint) + ", Province point: " + provincePoints.Contains(startingPoint) + "\nOther points...\n" );
+                foreach ((int, int) point in possiblePoints)
+                {
+                    Console.WriteLine("Border point: " + borderPoints.Contains(point) + ", Province point: " + provincePoints.Contains(point));
+                }
+               
+
+                //Check if the point north of it is not in the province
+                if (!borderPoints.Contains(possiblePoints[2]))
+                {
+                    //Check if the point to the east of it is not in the province
+                    if (!borderPoints.Contains(possiblePoints[1]))
+                    {
+                        //Check if point north of it is in the province and diagonal to the left is a border province
+                        if (provincePoints.Contains(possiblePoints[2]) && borderPoints.Contains((startingPoint.Item1 - 1, startingPoint.Item2 - 1))){
+                            startingPoint = (startingPoint.Item1 - 1, startingPoint.Item2 - 1);
+                            Console.WriteLine("Moving diagonally to the left.\n");
+                        }
+                        else
+                        {
+                            //Check if the point east of it is in the province and diagonal to the right is a border provice
+                            if (provincePoints.Contains(possiblePoints[1]) && borderPoints.Contains((startingPoint.Item1 + 1, startingPoint.Item2 - 1)))
+                            {
+                                startingPoint = (startingPoint.Item1 + 1, startingPoint.Item2 - 1);
+                                Console.WriteLine("Moving diagonally to the right.\n");
+                            }
+                            else
+                            {
+                                //If all possibilities are elimnated we have found the top left.
+                                Console.WriteLine("Identified top right.\n");
+                                topRight = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //If the point to the right is in the province, then we must move to the east
+                        startingPoint = possiblePoints[1];
+                        Console.WriteLine("Moving to the right.\n");
+                    }
+                }
+                else
+                {
+                    //If the point above is in the province, then we must move up north
+                    startingPoint = possiblePoints[2];
+                    Console.WriteLine("Moving up.\n");
+                }
+            }
+            return startingPoint;
+        }
+
         //Query the DB for provinces and render each as a different color, using the base image as a template
         public static void renderProvinces(DBConnection database, string inputPath,string outputPath)
         {
             Random r = new Random();
-            Image<Rgba32> image = Image.Load<Rgba32>(inputPath);
+            SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath);
             List<(int,int,int)> provinces = Point.getListOfAllPointsWithProvinces(database);
             int provinceId = 0;
             int R = r.Next(0, 255);
@@ -184,6 +359,44 @@ namespace FantasyColonialismBackend
                 }
             }
             image.SaveAsPng(outputPath);
+        }
+
+        //Convert a point into a grid point
+        //A grid point is the cross point of 4 points
+        //[0] is the xLeft,[1] is the xRight,[2] is the yUp,[3] is the yDown
+        private static (decimal, decimal) convertPointToGridPoint((int, int) point,gridOrientation orientation)
+        {
+
+            decimal shift = .5m;
+            switch (orientation)
+            {
+                case gridOrientation.topLeft:
+                    return ((Convert.ToDecimal(point.Item1)-shift), (Convert.ToDecimal(point.Item2) - shift));
+                    break;
+                case gridOrientation.topRight:
+                    return  ((Convert.ToDecimal(point.Item1) + shift), (Convert.ToDecimal(point.Item2) - shift));
+                    break;
+                case gridOrientation.bottomLeft:
+                    return  ((Convert.ToDecimal(point.Item1) - shift), (Convert.ToDecimal(point.Item2) + shift));
+                    break;
+                case gridOrientation.bottomRight:
+                    return ((Convert.ToDecimal(point.Item1) + shift), (Convert.ToDecimal(point.Item2) + shift));
+                    break;
+                case gridOrientation.topMiddle:
+                    return ((Convert.ToDecimal(point.Item1)), (Convert.ToDecimal(point.Item2) - shift));
+                    break;
+                case gridOrientation.bottomMiddle:
+                    return ((Convert.ToDecimal(point.Item1)), (Convert.ToDecimal(point.Item2) + shift));
+                    break;
+                case gridOrientation.leftMiddle:
+                    return ((Convert.ToDecimal(point.Item1) - shift), (Convert.ToDecimal(point.Item2)));
+                    break;
+                case gridOrientation.rightMiddle:
+                    return ((Convert.ToDecimal(point.Item1) + shift), (Convert.ToDecimal(point.Item2)));
+                    break;
+                default:return (-1m,-1m);
+            }
+
         }
 
 

@@ -1,0 +1,37 @@
+/*A point represents a single pixel within the provided seed map.
+All white (#FFFFFF and black #000000) tiles within the sample map will be given a point.*/
+CREATE TABLE Points (
+	id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    x numeric,
+    y numeric,
+    provinceId numeric
+);
+
+/*A province is a collection of contiguous points.*/
+CREATE TABLE Provinces (
+	id int NOT NULL,
+    name varchar(255),
+    avgX numeric,
+    avgY numeric
+);
+
+/*Represents the borders for each province. Primarily used in svg map creation.
+Borders are at points between the pixel grid.
+The start x and y allow you to put the starting point at any point on the grid.
+The length describes how many repetitions of the pattern occur.
+The pattern describes the pattern the border follows.
+Patterns:
+VERTICAL - A border that stretches vertically the length of one point.
+HORIZONTAL - A border that strentches horizontally the length of one point.
+DIAGONAL-LEFT - A diagonal border that starts from the top left. ( \ )
+DIAGONAL-RIGHT - A diagonal border that starts from the top right ( / ) */
+CREATE TABLE Borders (
+	id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    startX int,
+    startY int,
+    endX int,
+    endY int,
+	provinceId int,
+    pattern varchar(20)
+    );
+	

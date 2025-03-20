@@ -24,7 +24,20 @@ dbCon.Password = connectionStringBuilder.Password;
 
 if (dbCon.IsConnect())
 {
-    MapProvinceCreate.processImageIntoPoints("C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\test-continent-2.png", dbCon);
-    MapProvinceCreate.renderProvinces(dbCon, "C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\test-continent-2.png", "C:\\Users\\Thomas\\Documents\\fantasy-colonialism\\fantasy-colonialism-backend\\FantasyColonialismBackend\\output-2.png");
+    // Get the current directory
+    string currentDirectory = Environment.CurrentDirectory;
+
+    // Go back three directories to get to the main project folder
+    string parentDirectory = Directory.GetParent(currentDirectory).Parent.Parent.FullName;
+
+    // Output the parent directory
+    Console.WriteLine(parentDirectory);
+
+   // MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\test-continent-2.png", dbCon);
+    //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\test-continent-2.png", parentDirectory + "\\output-2.png");
+    //MapProvinceCreate.populateEdgesTable(dbCon);
+    //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\test-continent-2.svg");
+
+    SVGRenderer.updatePolygonToPath( parentDirectory + "\\test-continent-2.svg", parentDirectory + "\\test-continent-3.svg");
     dbCon.Close();
 }

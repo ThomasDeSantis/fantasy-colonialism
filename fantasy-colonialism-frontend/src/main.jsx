@@ -11,7 +11,7 @@ ReactDOM.createRoot(root).render(
     <BrowserRouter>
         <Routes>
             <Route path="/" element={<App />} />
-            <Route path="/map" element={<Map/>}/>
+            <Route path="/map" element={<Map />} />
         </Routes>
     </BrowserRouter>
 );

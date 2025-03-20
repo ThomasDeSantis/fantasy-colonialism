@@ -11,6 +11,10 @@ namespace FantasyColonialismBackend
     {
 
         //Returns coordinates of the neighbors of a point in a plus shape
+        //0 - West
+        // 1 - East
+        // 2 - North
+        // 3 - South
         public static List<(int, int)> getNeighborsPlus((int, int) point)
         {
             int x = point.Item1;
@@ -159,5 +163,17 @@ namespace FantasyColonialismBackend
                 return provinces.GroupBy(i => i).OrderByDescending(grp => grp.Count()).Select(grp => grp.Key).First();
             }
         }
+
+        //Write each line of a point list
+        public static void outputPointList(List<(int,int)> points)
+        {
+            Console.WriteLine("Points.\n");
+            foreach ((int, int) point in points)
+            {
+                Console.WriteLine("(" + point.Item1 + ", " + point.Item2 + ")\n");
+            }
+            Console.WriteLine("End of points.\n");
+        }
+
     }
 }
