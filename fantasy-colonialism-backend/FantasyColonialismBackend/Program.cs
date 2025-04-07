@@ -33,11 +33,10 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
-   // MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\test-continent-2.png", dbCon);
-    //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\test-continent-2.png", parentDirectory + "\\output-2.png");
-    //MapProvinceCreate.populateEdgesTable(dbCon);
-    //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\test-continent-2.svg");
-
-    SVGRenderer.updatePolygonToPath( parentDirectory + "\\test-continent-2.svg", parentDirectory + "\\test-continent-3.svg");
+    MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon);
+    MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
+    MapProvinceCreate.populateEdgesTable(dbCon);
+    SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-2.svg");
+    SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-2.svg", parentDirectory + "\\sf-continent-3.svg");
     dbCon.Close();
 }

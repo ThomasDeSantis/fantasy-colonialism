@@ -32,7 +32,7 @@ namespace FantasyColonialismBackend
             for (int i = 0; i < provinces.Count; i++)
             {
                 SvgPointCollection provincePoints = getDistinctProvinceRenderPoints(database, provinces[i]);
-                Console.WriteLine(provincePoints);
+                //Console.WriteLine(provincePoints);
                 SvgPolygon polygon = new SvgPolygon();
 
                 polygon.Points = provincePoints;
@@ -49,6 +49,7 @@ namespace FantasyColonialismBackend
 
             //Save the svg file
             svg.Write(outputPath);
+            Console.WriteLine("Finished SVG file: " + DateTime.UtcNow.ToString());
 
 
         }
@@ -159,6 +160,8 @@ namespace FantasyColonialismBackend
 
             var nsmgr = new XmlNamespaceManager(svgDoc.NameTable);
             nsmgr.AddNamespace("svg", svgDoc.DocumentElement.NamespaceURI);
+
+            //TODO: Set viewbox to 0 0 1300 1000, eventually dynamic
 
             var polys = svgDoc.SelectNodes("//svg:polygon | //svg:polyline", nsmgr);
             foreach (XmlNode poly in polys)

@@ -1,15 +1,41 @@
+import { useEffect, useState } from 'react'
 import './App.css'
-import testContinent from '../../img/test-continent-2.png'
 
-function App() {
+function Map() {
+    const [svgContent, setSvgContent] = useState(null);
+
+    useEffect(() => {
+        const url = 'svg-test.svg';
+
+        fetch(url)
+            .then(response => response.text())
+            .then(svgText => {
+                console.log(svgText);
+                console.log('\n----------------------------------\n');
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+                const svgElement = svgDoc.documentElement;
+
+                svgElement.setAttribute('class', 'svglayer');
+                setSvgContent(svgText);
+            })
+            .catch(error => console.error('Error loading SVG:', error));
+    }, []);
+
+    const handleSvgClick = (e) => {
+        console.log(e.target.id);
+    };
 
     return (
-        <>
-            <div>
-                <img src={testContinent}/>
-            </div>
-        </>
-    )
+        <div>
+            {svgContent && (
+                <div
+                    onClick={handleSvgClick}
+                    dangerouslySetInnerHTML={{ __html: svgContent }}
+                />
+            )}
+        </div>
+    );
 }
 
-export default App
+export default Map

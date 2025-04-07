@@ -65,6 +65,7 @@ namespace FantasyColonialismBackend
                     }
                 }
             }
+            Console.WriteLine("White Points: " + whitePoints.Count() + "Black Points: " + blackPoints.Count());
             Console.WriteLine("Finished processing image: " + DateTime.UtcNow.ToString());
             HashSet<(int, int)> visited = new HashSet<(int, int)>();
 
@@ -107,6 +108,11 @@ namespace FantasyColonialismBackend
                                 stack.Push(neighbor);
                             }
                         }
+                        if(pointId % 1000 == 0)
+                        {
+                            Console.WriteLine("Finished processing " + pointId + " points." + " Current province id: " + provinceId);
+
+                        }
                     }
                 }
             }
@@ -140,7 +146,6 @@ namespace FantasyColonialismBackend
                 //For each black point that was found in the initial search
                 foreach ((int, int) point in blackPoints)
                 {
-
                     //Query possible provinces. If no valid provinces in a plus pattern, try in an x pattern.
                     int possibleProvinces = Point.getNeighborValidPoint(database, point,true);
                     if(possibleProvinces == -1)
@@ -162,6 +167,8 @@ namespace FantasyColonialismBackend
                         pointCmd.Parameters.AddWithValue("@provinceId", possibleProvinces);
                         pointCmd.ExecuteNonQuery();
                         pointCmd.Parameters.Clear();
+
+                        Console.WriteLine("Wrote black point " + (pointId - 1) + " at " + point.Item1 + "," + point.Item2 + " to " + possibleProvinces);
                     }
                 }
             }

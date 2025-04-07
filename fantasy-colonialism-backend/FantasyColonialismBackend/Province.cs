@@ -1,6 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -53,8 +54,8 @@ namespace FantasyColonialismBackend
                 //If province does not contain the average x and y, then we must depth first search to find a point that does
                 if (checkProvinceId != province.Item1)
                 {
-                    var BFSCoord = Point.findClosestPointWithinAProvince(Int32.Parse(province.Item1), Int32.Parse(province.Item2), Int32.Parse(province.Item3), database);
-                    updateCmd.Parameters.AddWithValue("@id", Int32.Parse(province.Item1));
+                    var BFSCoord = Point.findClosestPointWithinAProvince(Int32.Parse(province.Item1,System.Globalization.NumberStyles.AllowThousands), Int32.Parse(province.Item2, NumberStyles.AllowThousands), Int32.Parse(province.Item3, NumberStyles.AllowThousands), database);
+                    updateCmd.Parameters.AddWithValue("@id", Int32.Parse(province.Item1, NumberStyles.AllowThousands));
                     updateCmd.Parameters.AddWithValue("@avgX", BFSCoord.Item1);
                     updateCmd.Parameters.AddWithValue("@avgY", BFSCoord.Item2);
                     updateCmd.ExecuteNonQuery();
@@ -63,9 +64,9 @@ namespace FantasyColonialismBackend
                 }
                 else //Otherwise just use the average x and y directly
                 {
-                    updateCmd.Parameters.AddWithValue("@id", Int32.Parse(province.Item1));
-                    updateCmd.Parameters.AddWithValue("@avgX", Int32.Parse(province.Item2));
-                    updateCmd.Parameters.AddWithValue("@avgY", Int32.Parse(province.Item3));
+                    updateCmd.Parameters.AddWithValue("@id", Int32.Parse(province.Item1, NumberStyles.AllowThousands));
+                    updateCmd.Parameters.AddWithValue("@avgX", Int32.Parse(province.Item2, NumberStyles.AllowThousands));
+                    updateCmd.Parameters.AddWithValue("@avgY", Int32.Parse(province.Item3, NumberStyles.AllowThousands));
                     updateCmd.ExecuteNonQuery();
                     updateCmd.Parameters.Clear();
                 }
