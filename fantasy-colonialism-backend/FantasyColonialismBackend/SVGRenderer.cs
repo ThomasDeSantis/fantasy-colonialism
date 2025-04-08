@@ -161,7 +161,12 @@ namespace FantasyColonialismBackend
             var nsmgr = new XmlNamespaceManager(svgDoc.NameTable);
             nsmgr.AddNamespace("svg", svgDoc.DocumentElement.NamespaceURI);
 
-            //TODO: Set viewbox to 0 0 1300 1000, eventually dynamic
+            // Set viewBox to 0 0 1300 1000
+            var svgRoot = svgDoc.DocumentElement;
+            if (svgRoot != null)
+            {
+                svgRoot.SetAttribute("viewBox", "0 0 1300 1000");
+            }
 
             var polys = svgDoc.SelectNodes("//svg:polygon | //svg:polyline", nsmgr);
             foreach (XmlNode poly in polys)
@@ -181,7 +186,9 @@ namespace FantasyColonialismBackend
                         path.SetAttribute(attr.Name, attr.Value);
                     }
                 }
-
+                path.SetAttribute("fill", "#FFF");
+                path.SetAttribute("stroke", "#000");
+                path.RemoveAttribute("style");
                 poly.ParentNode.ReplaceChild(path, poly);
             }
 
