@@ -24,6 +24,7 @@ dbCon.Password = connectionStringBuilder.Password;
 
 if (dbCon.IsConnect())
 {
+    dbCon.setSessionVariables();
     // Get the current directory
     string currentDirectory = Environment.CurrentDirectory;
 
@@ -33,10 +34,13 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
-    //MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon);
-    //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
+    MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon,config);
+
+    //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
+    
+    MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
     //MapProvinceCreate.populateEdgesTable(dbCon);
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-2.svg");
-    SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-2.svg", parentDirectory + "\\sf-continent-3.svg");
+    //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-2.svg", parentDirectory + "\\sf-continent-3.svg");
     dbCon.Close();
 }

@@ -42,5 +42,20 @@ namespace FantasyColonialismBackend
         {
             Connection.Close();
         }
+
+        public void setSessionVariables()
+        {
+            string maxRecursionDepthQuery = "SET SESSION cte_max_recursion_depth = 1000000;";
+
+            var sessionCmd = new MySqlCommand(maxRecursionDepthQuery, Connection);
+
+            sessionCmd.ExecuteNonQuery();
+        }
+
+        public void runStringNonQueryCommand(string command)
+        {
+            MySqlCommand cmd = new MySqlCommand(command, Connection);
+            cmd.ExecuteNonQuery();
+        }
     }
 }

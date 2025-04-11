@@ -4,6 +4,9 @@ CREATE TABLE Points (
 	id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
     x numeric,
     y numeric,
+    land bool NOT NULL DEFAULT true,
+    waterSalinity decimal (3,1), /*NULL if a land point, otherwise the percentage of salt in the water. Ocean standard is 3.5%*/
+    type enum('land', 'ocean', 'lake') NOT NULL DEFAULT 'land',
     provinceId numeric
 );
 
@@ -14,3 +17,5 @@ CREATE TABLE Provinces (
     avgX numeric,
     avgY numeric
 );
+
+    

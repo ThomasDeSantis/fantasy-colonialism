@@ -109,7 +109,7 @@ namespace FantasyColonialismBackend
 
         public static List<(int provinceId, int x, int y)> getListOfAllPointsWithProvinces(DBConnection database)
         {
-            string query = "SELECT provinceId, x, y FROM Points ORDER BY provinceId";
+            string query = "SELECT provinceId, x, y FROM Points WHERE land = true ORDER BY provinceId ";
             var cmd = new MySqlCommand(query, database.Connection);
 
             MySqlDataReader rdr = cmd.ExecuteReader();
@@ -124,6 +124,40 @@ namespace FantasyColonialismBackend
             return pointsWithProvinces;
         }
 
+        public static List<(int x, int y)> getListOfAllOceanPointsWithProvinces(DBConnection database)
+        {
+            string query = "SELECT x, y FROM Points WHERE type = 'ocean'";
+            var cmd = new MySqlCommand(query, database.Connection);
+
+            MySqlDataReader rdr = cmd.ExecuteReader();
+            List<(int x, int y)> oceanPoints = new List<(int x, int y)>();
+
+            while (rdr.Read())
+            {
+                oceanPoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+            }
+            rdr.Close();
+
+            return oceanPoints;
+        }
+
+        public static List<(int x, int y)> getListOfAllLakePointsWithProvinces(DBConnection database)
+        {
+            string query = "SELECT x, y FROM Points WHERE type = 'lake'";
+            var cmd = new MySqlCommand(query, database.Connection);
+
+            MySqlDataReader rdr = cmd.ExecuteReader();
+            List<(int x, int y)> lakePoints = new List<(int x, int y)>();
+
+            while (rdr.Read())
+            {
+                lakePoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+            }
+            rdr.Close();
+
+            return lakePoints;
+        }
+
         //Searches for neighbors that are valid points in a plus pattern  
         //If plus == true then search using the getNeighborsPlus pattern  
         //Returns a province id if there is at least one valid province, returns -1 if there are no valid provinces  
@@ -132,11 +166,11 @@ namespace FantasyColonialismBackend
             string query = null;
             if (plus)
             {
-                query = "SELECT DISTINCT provinceId from Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1))";
+                query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
             }
             else
             {
-                query = "SELECT DISTINCT provinceId from Points WHERE (x = (@x + 1) AND y = (@y + 1)) OR (x = (@x - 1) AND y = (@y - 1)) OR (x = (@x + 1) AND y = (@y - 1)) OR (x = (@x - 1) AND y = (@y + 1))";
+                query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = (@y + 1)) OR (x = (@x - 1) AND y = (@y - 1)) OR (x = (@x + 1) AND y = (@y - 1)) OR (x = (@x - 1) AND y = (@y + 1)) AND land = true";
             }
 
             var cmd = new MySqlCommand(query, database.Connection);
@@ -164,6 +198,43 @@ namespace FantasyColonialismBackend
             }
         }
 
+        //Searches for neighbors that are valid points in a plus pattern  
+        //If plus == true then search using the getNeighborsPlus pattern  
+        //Returns a province id if there is at least one valid province, returns -1 if there are no valid provinces  
+        public static int getNeighborValidPoint(Dictionary<(int,int),int> validPoints, (int, int) point)
+        {
+            string query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
+            List<int> provinces = new List<int>();
+
+            //Retrieve the north,east,south, and west province ids by referencing the dictionary
+            if (validPoints.ContainsKey((point.Item1,point.Item2 - 1)))
+            {
+                provinces.Add(validPoints[(point.Item1, point.Item2 - 1)]);
+            }
+            if (validPoints.ContainsKey((point.Item1 + 1, point.Item2)))
+            {
+                provinces.Add(validPoints[(point.Item1 + 1, point.Item2)]);
+            }
+            if (validPoints.ContainsKey((point.Item1, point.Item2 + 1)))
+            {
+                provinces.Add(validPoints[(point.Item1, point.Item2 + 1)]);
+            }
+            if (validPoints.ContainsKey((point.Item1 - 1, point.Item2)))
+            {
+                provinces.Add(validPoints[(point.Item1 - 1, point.Item2)]);
+            }
+
+            //If there are no provinces, then you should leave it alone.
+            if(provinces.Count == 0)
+            {
+                return -1;
+            }
+
+            //Return the most frequent province in the list
+            return provinces.GroupBy(i => i).OrderByDescending(grp => grp.Count()).Select(grp => grp.Key).First();
+
+        }
+
         //Write each line of a point list
         public static void outputPointList(List<(int,int)> points)
         {
@@ -173,6 +244,20 @@ namespace FantasyColonialismBackend
                 Console.WriteLine("(" + point.Item1 + ", " + point.Item2 + ")\n");
             }
             Console.WriteLine("End of points.\n");
+        }
+
+        public static Dictionary<(int,int), int> retrieveAllValidLandPoints(DBConnection database)
+        {
+            string query = "SELECT x, y, provinceId FROM Points WHERE land = true and provinceId IS NOT NULL";
+            var cmd = new MySqlCommand(query, database.Connection);
+            MySqlDataReader rdr = cmd.ExecuteReader();
+            Dictionary<(int, int), int> validLandPoints = new Dictionary<(int, int), int>();
+            while (rdr.Read())
+            {
+                validLandPoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)), rdr.GetInt32(2));
+            }
+            rdr.Close();
+            return validLandPoints;
         }
 
     }

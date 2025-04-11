@@ -12,6 +12,8 @@ using Mysqlx.Crud;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using Microsoft.Extensions.Configuration;
+using ExCSS;
 
 namespace FantasyColonialismBackend
 {
@@ -32,147 +34,361 @@ namespace FantasyColonialismBackend
         private static string provinceInsertQuery = "INSERT INTO provinces (id) VALUES (@id)";
         private static string checkIfPointInAProvince = "SELECT provinceId FROM Points WHERE x = @x AND y = @y";
         private static string edgeInsertQuery = "INSERT INTO renderEdges (x1,y1,x2,y2,provinceId) VALUES (@x1,@y1,@x2,@y2,@provinceId)";
+        private static string oceanPointInsertQuery = "INSERT INTO points (x,y,land,waterSalinity,type) VALUES (@x,@y,false,3.5,'ocean')";
+        private static string lakePointInsertQuery = "INSERT INTO points (x,y,land,waterSalinity,type) VALUES (@x,@y,false,0.5,'lake')";
         private static string truncateRenderEdges = "TRUNCATE TABLE renderEdges";
-        public static void processImageIntoPoints(string inputPath, DBConnection database)
+        //Gets all points in the image array that has not been allocated a point
+        private static string getUnallocatedPoints = "WITH RECURSIVE nums_x AS (SELECT 0 AS x UNION ALL SELECT x + 1 FROM nums_x WHERE x < @x ), nums_y AS (SELECT 0 AS y UNION ALL SELECT y + 1 FROM nums_y WHERE y < @y ) SELECT nx.x, ny.y FROM nums_x nx CROSS JOIN nums_y ny LEFT JOIN Points p ON p.x = nx.x AND p.y = ny.y WHERE p.id IS NULL";
+        public static void processImageIntoPoints(string inputPath, DBConnection database,IConfiguration config)
         {
             Console.WriteLine("Image processing began: " + DateTime.UtcNow.ToString());
             int pointId = 0;// Point ID that will be stored in DB
-            int provinceId = 0;//Province ID that will be stored in DB
+            int height = 0;
+            int width = 0;
             List<(int, int)> blackPoints = new List<(int, int)>(); //This list will store all the black points in the image
+            List<(int, int)> oceanPoints = new List<(int, int)>(); //This will store all the ocean points in the image
+            List<(int, int)> lakePoints = new List<(int, int)>(); //This will store all the ocean points in the image
             HashSet<(int, int)> whitePoints = new HashSet<(int, int)>(); //This hashset will store all the white points in the image. Is a hashset for faster lookup times.
 
+
+
+            Rgba32 borderColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapBorder"));
+            Rgba32 pointColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapPoint"));
+            Rgba32 oceanColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapOceanPoint"));
+            Rgba32 lakeColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapLakePoint"));
+
+
             var pointCmd = new MySqlCommand(pointInsertQuery, database.Connection);
-            var provinceCmd = new MySqlCommand(provinceInsertQuery, database.Connection);
             using (SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath))
             {
+                height = image.Height;
+                width = image.Width;
                 for (int y = 0; y < image.Height; y++)
                 {
                     for (int x = 0; x < image.Width; x++)
                     {
                         var color = image[x, y];
-                        if (color.R == 255 && color.G == 255 && color.B == 255)
+                        if (color == oceanColor)
+                        {
+                            //This is a ocean pixel
+                            //Add it to the list of ocean points
+                            oceanPoints.Add((x, y));
+                        }
+                        else if (color == pointColor)
                         {
                             //This is a white pixel
                             //Add it to the list of white points
                             whitePoints.Add((x, y));
                         }
-                        else if (color.R == 0 && color.G == 0 && color.B == 0)
+                        else if (color == borderColor)
                         {
                             //This is a black pixel
                             //Add it to the list of black points
                             blackPoints.Add((x, y));
                         }
+                        else if (color == lakeColor)
+                        {
+                            //This is a lake pixel
+                            //Add it to the list of lake points
+                            lakePoints.Add((x, y));
+                        }
                     }
                 }
             }
-            Console.WriteLine("White Points: " + whitePoints.Count() + "Black Points: " + blackPoints.Count());
+            Console.WriteLine("White Points: " + whitePoints.Count() + "Black Points: " + blackPoints.Count() + "Ocean Points: " + oceanPoints.Count() + "Lake Points: " + lakePoints.Count());
             Console.WriteLine("Finished processing image: " + DateTime.UtcNow.ToString());
-            HashSet<(int, int)> visited = new HashSet<(int, int)>();
 
-            //Do a depth first search
-            //At this point all white points will be divided into provinces and pushed into the DB
-            foreach ((int, int) point in whitePoints)
-            {
-                if (!visited.Contains(point))
-                {
-                    //This point has not been visited yet
-                    //Create a new province and add it to the DB
-                    int currentProvinceId = provinceId++;
-                    provinceCmd.Parameters.AddWithValue("@id", currentProvinceId);
-                    provinceCmd.ExecuteNonQuery();
-                    provinceCmd.Parameters.Clear();
+            insertWhitePointsToDB(database, whitePoints);
 
-                    Stack<(int, int)> stack = new Stack<(int, int)>();
-                    stack.Push(point);
-                    while (stack.Count > 0)
-                    {
-                        (int, int) currentPoint = stack.Pop();
-                        if (visited.Contains(currentPoint))
-                        {
-                            continue;
-                        }
-                        visited.Add(currentPoint);
-                        //Create a point in the database
-                        pointCmd.Parameters.AddWithValue("@id", pointId++);
-                        pointCmd.Parameters.AddWithValue("@x", currentPoint.Item1);
-                        pointCmd.Parameters.AddWithValue("@y", currentPoint.Item2);
-                        pointCmd.Parameters.AddWithValue("@provinceId", currentProvinceId);
-                        pointCmd.ExecuteNonQuery();
-                        pointCmd.Parameters.Clear();
 
-                        //Check all the neighbors of the current point
-                        foreach ((int, int) neighbor in Point.getNeighborsPlus(currentPoint))
-                        {
-                            if (whitePoints.Contains(neighbor) && !visited.Contains(neighbor))
-                            {
-                                stack.Push(neighbor);
-                            }
-                        }
-                        if(pointId % 1000 == 0)
-                        {
-                            Console.WriteLine("Finished processing " + pointId + " points." + " Current province id: " + provinceId);
-
-                        }
-                    }
-                }
-            }
             Console.WriteLine("Finished INSERTing white points into DB: " + DateTime.UtcNow.ToString());
+
             //Update the average center of each province in the DB
+            Province.calculateProvincesAverages(database);
+            Console.WriteLine("Finished calculating province average x & y: " + DateTime.UtcNow.ToString());
+
+            //Now assign all border points to the province with the most bordering points
+            pointId = insertBorderPointsToDB(database, blackPoints, pointId);
+
+            Console.WriteLine("Finished INSERTing border points into DB: " + DateTime.UtcNow.ToString());
+
+            insertWaterPointsToDB(database, oceanPoints, 3.5m, "ocean", pointId);
+
+            Console.WriteLine("Finished INSERTing ocean points into DB: " + DateTime.UtcNow.ToString());
+
+            insertWaterPointsToDB(database, lakePoints, 0.5m, "lake", pointId);
+
+            Console.WriteLine("Finished INSERTing lake points into DB: " + DateTime.UtcNow.ToString());
+
+            Console.WriteLine("Height:" + height + " Width: " + width);
+
+
+            //Assign any point in the bitmap that has not been allocated
+            assignRemainingUnallocatedPoints(database, height, width);
+
+
+            Console.WriteLine("Finished allocating additional points into DB: " + DateTime.UtcNow.ToString());
+
+            //Update the average center of each province in the DB now that it is complete
             Province.calculateProvincesAverages(database);
 
             Console.WriteLine("Finished calculating province average x & y: " + DateTime.UtcNow.ToString());
+        }
 
-            //Will be used for black point logic
-            Random r = new Random();
 
-            //Connect each black point to a bordering province
-            //If the black point is not connected to a bordering province, put it in a list to be checked again after wards
-            //This is to handle the case where a black point is only connected to more black points
-            //But once the provinces are expanded, they may be in contact with a province
-            //If we find that after running it, the list of unbound black points remains the same
-            //Then we can assume that the black points are not connected to any province and can be ignored
-
-            List<(int, int)> unboundBlackPoints = new List<(int, int)>(); //This list will store all the black points were not able to be connected to a province
-            int priorBlackPoints = -1;// This will hold how many black points were unbound in the previous iteration. This will be used to make sure we are not getting into an infinite loop.
-
-            //Condition 1 ensures that we are not stuck in an infinite loop
-            //Condition 2 ensures that we have not finished connecting all the black points
-            while (priorBlackPoints != unboundBlackPoints.Count && priorBlackPoints != 0)
+        //Check how many points are unallocated and iterate until all are assigned
+        public static void assignRemainingUnallocatedPoints(DBConnection database, int height, int width)
+        {
+            int pointsRemaining;
+            do
             {
-                Console.WriteLine("Current passthrough black points: " + blackPoints.Count());
-
-                priorBlackPoints = unboundBlackPoints.Count;//At the beginning of the loop set this as the current number of unbound black points. This will only be used in the while loop.
-
-                //For each black point that was found in the initial search
-                foreach ((int, int) point in blackPoints)
+                var cmd = new MySqlCommand(getUnallocatedPoints, database.Connection);
+                cmd.Parameters.AddWithValue("@x", width - 1);
+                cmd.Parameters.AddWithValue("@y", height - 1);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+                cmd.Parameters.Clear();
+                //Store each id, x, and y in a list
+                List<(int, int)> unallocatedPoints = new List<(int, int)>();
+                while (rdr.Read())
                 {
-                    //Query possible provinces. If no valid provinces in a plus pattern, try in an x pattern.
-                    int possibleProvinces = Point.getNeighborValidPoint(database, point,true);
-                    if(possibleProvinces == -1)
+                    unallocatedPoints.Add((rdr.GetInt32(0), rdr.GetInt32(1)));
+                }
+                rdr.Close();
+                Console.WriteLine("Unallocated points before allocation: " + unallocatedPoints.Count);
+                //For each point that is unallocated, assign it to a random province
+                List<(int, int)> allocatedPoints = new List<(int, int)>();
+                foreach ((int, int) point in unallocatedPoints)
+                {
+                    if(assignUnallocatedPoints(database, point))
                     {
-                        possibleProvinces = Point.getNeighborValidPoint(database, point, false);
-                    }
+                        allocatedPoints.Add(point);
+                    }                  
+                }
+                unallocatedPoints = unallocatedPoints.Except(allocatedPoints).ToList();
+                pointsRemaining = unallocatedPoints.Count;
+                Console.WriteLine("Unallocated points after allocation: " + pointsRemaining);
+            } while (pointsRemaining > 0);
+        }
 
-                    if(possibleProvinces == -1)
-                    {
-                        //If there are no valid provinces, add it to the list of unbound black points
-                        unboundBlackPoints.Add(point);
-                    }
-                    else
-                    {
-                        //If there are valid provinces, add the point to the province
-                        pointCmd.Parameters.AddWithValue("@id", pointId++);
-                        pointCmd.Parameters.AddWithValue("@x", point.Item1);
-                        pointCmd.Parameters.AddWithValue("@y", point.Item2);
-                        pointCmd.Parameters.AddWithValue("@provinceId", possibleProvinces);
-                        pointCmd.ExecuteNonQuery();
-                        pointCmd.Parameters.Clear();
 
-                        Console.WriteLine("Wrote black point " + (pointId - 1) + " at " + point.Item1 + "," + point.Item2 + " to " + possibleProvinces);
+        //Returns the number of points process
+        //Returns -1 if failure
+        private static int insertWhitePointsToDB(DBConnection database, HashSet<(int, int)> whitePoints)
+        {
+            try
+            {
+                HashSet<(int, int)> visited = new HashSet<(int, int)>();
+
+                int provinceId = 0;//Province ID that will be stored in DB
+                int pointId = 0; //Used for logging purposes
+
+                //Do a depth first search
+                //At this point all white points will be divided into provinces and pushed into the DB
+
+                var provinceCmd = new MySqlCommand(provinceInsertQuery, database.Connection);
+                List<string> batchWhitePointInsertRows = new List<string>();
+                foreach ((int, int) point in whitePoints)
+                {
+                    if (!visited.Contains(point))
+                    {
+                        //This point has not been visited yet
+                        //Create a new province and add it to the DB
+                        int currentProvinceId = provinceId++;
+                        provinceCmd.Parameters.AddWithValue("@id", currentProvinceId);
+                        provinceCmd.ExecuteNonQuery();
+                        provinceCmd.Parameters.Clear();
+
+
+                        Stack<(int, int)> stack = new Stack<(int, int)>();
+                        stack.Push(point);
+                        while (stack.Count > 0)
+                        {
+                            
+                            (int, int) currentPoint = stack.Pop();
+                            if (visited.Contains(currentPoint))
+                            {
+                                continue;
+                            }
+                            visited.Add(currentPoint);
+                            //Add point to batch insert
+                            batchWhitePointInsertRows.Add(string.Format("({0},{1},{2})", MySqlHelper.EscapeString(currentPoint.Item1.ToString()), MySqlHelper.EscapeString(currentPoint.Item2.ToString()), MySqlHelper.EscapeString(currentProvinceId.ToString())));
+                            pointId++;
+
+                            //Check all the neighbors of the current point
+                            foreach ((int, int) neighbor in Point.getNeighborsPlus(currentPoint))
+                            {
+                                if (whitePoints.Contains(neighbor) && !visited.Contains(neighbor))
+                                {
+                                    stack.Push(neighbor);
+                                }
+                            }
+                            if (pointId % 1000 == 0)
+                            {
+                                Console.WriteLine("Finished processing white" + pointId + " points." + " Current province id: " + provinceId);
+
+                            }
+                        }
                     }
                 }
-            }
 
+                StringBuilder batchWhitePointInsert = new StringBuilder("INSERT INTO Points (x,y,provinceId) VALUES ");
+                //Finish the insert statement
+                batchWhitePointInsert.Append(string.Join(",", batchWhitePointInsertRows));
+                batchWhitePointInsert.Append(";");
+                //Insert all of the white points into the DB
+
+                database.runStringNonQueryCommand(batchWhitePointInsert.ToString());
+
+                return pointId;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return -1;
+            }
+        }
+
+        private static int insertBorderPointsToDB(DBConnection database, List<(int,int)> borderPoints,int pointId)
+        {
+            try
+            {
+
+                //Get a list of all points that are currently valid with a province
+                //While iterating through the black points, assign them to the province with the most bordering points
+                //If an equal number of province points exist (EX: 2 provinces with 1 point each) then assign it to a random province
+                //Only do this for a single loop. All other black points will be handled during a final cleanup pass at the end.
+
+                List<string> batchBorderPointInsertRows = new List<string>();
+
+                //Get all valid land points with their respective province ids
+                Dictionary<(int, int), int> validLandPoints = Point.retrieveAllValidLandPoints(database);
+
+                //For each black point that was found in the initial search
+                foreach ((int, int) point in borderPoints)
+                {
+                    
+                    //Query possible provinces.
+                    int possibleProvinceId = Point.getNeighborValidPoint(validLandPoints, point);
+                    if (possibleProvinceId != -1)
+                    {
+                        batchBorderPointInsertRows.Add(string.Format("({0},{1},{2})", MySqlHelper.EscapeString(point.Item1.ToString()), MySqlHelper.EscapeString(point.Item2.ToString()), MySqlHelper.EscapeString(possibleProvinceId.ToString())));
+                        pointId++;
+                    }
+                    if (pointId % 250 == 0)
+                    {
+                        Console.WriteLine("Finished processing border " + pointId + " points." + " Current province id: " + possibleProvinceId);
+
+                    }
+                }
+
+                StringBuilder batchBorderPointInsert = new StringBuilder("INSERT INTO Points (x,y,provinceId) VALUES ");
+                //Finish the insert statement
+                batchBorderPointInsert.Append(string.Join(",", batchBorderPointInsertRows));
+                batchBorderPointInsert.Append(";");
+                //Insert all of the white points into the DB
+
+                database.runStringNonQueryCommand(batchBorderPointInsert.ToString());
+
+                return pointId;
+
+
+            } catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return -1;
+            }
+        }
+
+        
+        //Insert ocean points to DB
+        private static int insertWaterPointsToDB(DBConnection database, List<(int, int)> waterPoints, decimal salinity, string type, int pointId)
+        {
+            try
+            {
+                List<string> batchWaterPointInsertRows = new List<string>();
+                //Now that all land points have been added to the DB, we can add the ocean/lake points
+                foreach ((int, int) point in waterPoints)
+                {
+                    batchWaterPointInsertRows.Add(string.Format("({0},{1},{2},{3},{4})", MySqlHelper.EscapeString(point.Item1.ToString()), MySqlHelper.EscapeString(point.Item2.ToString()), MySqlHelper.EscapeString(salinity.ToString()), "'" + MySqlHelper.EscapeString(type) + "'", MySqlHelper.EscapeString("false")));
+                }
+
+                StringBuilder batchOceanPointInsert = new StringBuilder("INSERT INTO Points (x,y,waterSalinity,type,land) VALUES ");
+                //Finish the insert statement
+                batchOceanPointInsert.Append(string.Join(",", batchWaterPointInsertRows));
+                batchOceanPointInsert.Append(";");
+                //Insert all of the white points into the DB
+
+
+                database.runStringNonQueryCommand(batchOceanPointInsert.ToString());
+
+                return pointId;
+
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return -1;
+            }
+        }
+
+        //Pull a random neighboring province to assign the unallocated point to.
+        public static bool assignUnallocatedPoints(DBConnection database, (int, int) point)
+        {
+            string query = "SELECT x,y,waterSalinity,type,provinceId FROM Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) ORDER BY RAND() LIMIT 1;";
+
+            var cmd = new MySqlCommand(query, database.Connection);
+            cmd.Parameters.AddWithValue("@x", point.Item1);
+            cmd.Parameters.AddWithValue("@y", point.Item2);
+
+            MySqlDataReader rdr = cmd.ExecuteReader();
+            int x = -1;
+            int y = -1;
+            decimal waterSalinity = -1;
+            string type = null;
+            int provinceId = -1;
+
+            List<int> provinces = new List<int>();
+
+            while (rdr.Read())
+            {
+
+                x = Int32.Parse(rdr[0].ToString());
+                y = Int32.Parse(rdr[1].ToString());
+                decimal.TryParse(rdr[2].ToString(), out waterSalinity);
+                type = rdr[3].ToString();
+                Int32.TryParse(rdr[4].ToString(),out provinceId);
+            }
+            rdr.Close();
+
+            switch (type)
+            {
+                case "ocean":
+                    var oceanPointCmd = new MySqlCommand(oceanPointInsertQuery, database.Connection);
+                    oceanPointCmd.Parameters.AddWithValue("@x", point.Item1);
+                    oceanPointCmd.Parameters.AddWithValue("@y", point.Item2);
+                    oceanPointCmd.ExecuteNonQuery();
+                    oceanPointCmd.Parameters.Clear();
+                    return true;
+                    break;
+                case "land":
+                    var pointCmd = new MySqlCommand(pointInsertQuery, database.Connection);
+                    pointCmd.Parameters.AddWithValue("@x", point.Item1);
+                    pointCmd.Parameters.AddWithValue("@y", point.Item2);
+                    pointCmd.Parameters.AddWithValue("@provinceId", provinceId);
+                    pointCmd.ExecuteNonQuery();
+                    pointCmd.Parameters.Clear();
+                    return true;
+                case "lake":
+                    var lakePointCmd = new MySqlCommand(lakePointInsertQuery, database.Connection);
+                    lakePointCmd.Parameters.AddWithValue("@x", point.Item1);
+                    lakePointCmd.Parameters.AddWithValue("@y", point.Item2);
+                    lakePointCmd.ExecuteNonQuery();
+                    lakePointCmd.Parameters.Clear();
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         //This function will populate the borders of each province in the DB
@@ -345,6 +561,7 @@ namespace FantasyColonialismBackend
         {
             Random r = new Random();
             SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath);
+
             List<(int,int,int)> provinces = Point.getListOfAllPointsWithProvinces(database);
             int provinceId = 0;
             int R = r.Next(0, 255);
@@ -365,6 +582,20 @@ namespace FantasyColonialismBackend
                     Console.WriteLine("Finished rendering " + i + " points");
                 }
             }
+
+            List<(int, int)> oceanPoints = Point.getListOfAllOceanPointsWithProvinces(database);
+            for(int i = 0; i < oceanPoints.Count; i++)
+            {
+                image[oceanPoints[i].Item1, oceanPoints[i].Item2] = Rgba32.ParseHex("00FFFF");
+            }
+
+            List<(int,int)> lakePoints = Point.getListOfAllLakePointsWithProvinces(database);
+            for (int i = 0; i < lakePoints.Count; i++)
+            {
+                image[lakePoints[i].Item1, lakePoints[i].Item2] = Rgba32.ParseHex("0000FF");
+            }
+
+
             image.SaveAsPng(outputPath);
         }
 

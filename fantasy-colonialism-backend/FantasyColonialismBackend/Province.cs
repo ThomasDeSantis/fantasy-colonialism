@@ -16,8 +16,8 @@ namespace FantasyColonialismBackend
             //TODO: see if I can update this into a single query
             //UPDATE Provinces p1 JOIN (SELECT AVG(x) as pointsAvgX, AVG(y) as pointsAvgY, provinceId from Points GROUP BY provinceId) p2 ON p1.id = p2.provinceid SET p1.avgX = p2.pointsAvgX AND p1.avgY = p2.pointsAvgY;"
 
-            string getAllProvincesQuery = "SELECT provinceId, FORMAT(AVG(x),0), FORMAT(AVG(y),0) FROM Points GROUP BY provinceId;";
-            string getXYProvinceQuery = "SELECT provinceId FROM Points WHERE x = @x and y = @y;";
+            string getAllProvincesQuery = "SELECT provinceId, FORMAT(AVG(x),0), FORMAT(AVG(y),0) FROM Points WHERE land = true GROUP BY provinceId;";
+            string getXYProvinceQuery = "SELECT provinceId FROM Points WHERE x = @x and y = @y and land = true;";
             string provinceUpdateQuery = "UPDATE provinces SET avgX = @avgX, avgY = @avgY WHERE id = @id";
             var queryCmd = new MySqlCommand(getAllProvincesQuery, database.Connection);
             var queryXYCmd = new MySqlCommand(getXYProvinceQuery, database.Connection);
