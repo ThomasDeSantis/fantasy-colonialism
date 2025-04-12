@@ -1,5 +1,21 @@
 {
   "ConnectionStrings": {
     "DatabaseConnection": "Server=SERVERHOST;Database=DATABASE;User Id=USER;Password=PASSWORD;"
+  },
+  "MapSettings": {
+    "TopLatitude": "37.5",
+    "BottomLatitude": "-49.5",
+    "WestLongitude": "-5",
+    "EastLongitude": "101.2"
+  },
+  "ImageSettings": {
+    "Width": "1053",
+    "Height": "1000"
+  },
+  "MapgenStrings": {
+    "BaseMapBorder": "#000000",
+    "BaseMapPoint": "#FFFFFF",
+    "BaseMapOceanPoint": "#6EC8FA",
+    "BaseMapLakePoint": "#2F63BF"
   }
 }
