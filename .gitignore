@@ -52,3 +52,5 @@ fantasy-colonialism-backend/.vs
 *.svg
 
 *.bak
+
+/fantasy-colonialism-mapgen/.vs/

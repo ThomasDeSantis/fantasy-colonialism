@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using System.Xml;
 
-namespace FantasyColonialismBackend
+namespace FantasyColonialismMapgen
 {
     class SVGRenderer
     {

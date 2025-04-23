@@ -5,10 +5,47 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FantasyColonialismBackend
+namespace FantasyColonialismMapgen
 {
     class Point
     {
+        //You will not need to change any of the properties after instantiation.
+        private int x;
+        private int y;
+        private bool land;
+        private decimal waterSalinity;
+        private PointType type;
+        private int provinceId;
+
+        // Getter Properties
+        public int X { get => x; }
+        public int Y { get => y; }
+        public bool Land { get => land; }
+        public decimal WaterSalinity { get => waterSalinity; }
+        public PointType Type { get => type; }
+        public int ProvinceId { get => provinceId; }
+
+        //Used for generating water points
+        public Point(int x, int y, bool land, decimal waterSalinity, PointType type)
+        {
+            this.x = x;
+            this.y = y;
+            this.land = land;
+            this.waterSalinity = waterSalinity;
+            this.type = type;
+        }
+
+        //Used for generating land points
+        public Point(int x, int y, bool land, PointType type, int provinceId)
+        {
+            this.x = x;
+            this.y = y;
+            this.land = land;
+            this.type = type;
+            this.provinceId = provinceId;
+        }
+
+
 
         //Returns coordinates of the neighbors of a point in a plus shape
         //0 - West
@@ -260,5 +297,11 @@ namespace FantasyColonialismBackend
             return validLandPoints;
         }
 
+    }
+
+    enum PointType{
+        land,
+        ocean,
+        lake
     }
 }

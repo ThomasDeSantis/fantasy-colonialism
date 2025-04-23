@@ -7,7 +7,7 @@ CREATE TABLE Points (
     land bool NOT NULL DEFAULT true,
     waterSalinity decimal (3,1), /*NULL if a land point, otherwise the percentage of salt in the water. Ocean standard is 3.5%*/
     type enum('land', 'ocean', 'lake') NOT NULL DEFAULT 'land',
-    provinceId numeric
+    provinceId numeric NOT NULL DEFAULT -1
 );
 
 /*A province is a collection of contiguous points.*/

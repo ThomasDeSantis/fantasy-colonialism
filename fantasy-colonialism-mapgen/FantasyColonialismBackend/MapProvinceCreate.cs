@@ -15,7 +15,7 @@ using SixLabors.ImageSharp.Processing;
 using Microsoft.Extensions.Configuration;
 using ExCSS;
 
-namespace FantasyColonialismBackend
+namespace FantasyColonialismMapgen
 {
     class MapProvinceCreate
     {
@@ -394,6 +394,8 @@ namespace FantasyColonialismBackend
         //This function will populate the borders of each province in the DB
         public static void populateEdgesTable(DBConnection database)
         {
+
+            Console.WriteLine("Begin processing edges: " + DateTime.UtcNow.ToString());
             // Truncate the renderEdges table
             var truncateCmd = new MySqlCommand(truncateRenderEdges, database.Connection);
             truncateCmd.ExecuteNonQuery();
@@ -436,6 +438,8 @@ namespace FantasyColonialismBackend
                 }
                 Console.WriteLine("Finished province " + provinces[i]);
             }
+
+            Console.WriteLine("Finished populating edges: " + DateTime.UtcNow.ToString());
 
         }
 

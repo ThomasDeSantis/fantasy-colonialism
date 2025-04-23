@@ -1,5 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-using FantasyColonialismBackend;
+﻿using FantasyColonialismMapgen;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using System.IO;
@@ -34,13 +33,15 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
-    MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon,config);
+    //MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon,config);
 
     //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
     
-    MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
+    //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
     //MapProvinceCreate.populateEdgesTable(dbCon);
-    //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-2.svg");
-    //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-2.svg", parentDirectory + "\\sf-continent-3.svg");
+    //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
+    SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
+    //Map SingletonMap = Map.Instance;
+
     dbCon.Close();
 }

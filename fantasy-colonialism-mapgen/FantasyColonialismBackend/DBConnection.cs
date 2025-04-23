@@ -1,7 +1,7 @@
 ﻿using MySql.Data;
 using MySql.Data.MySqlClient;
 
-namespace FantasyColonialismBackend
+namespace FantasyColonialismMapgen
 {
     public class DBConnection
     {
