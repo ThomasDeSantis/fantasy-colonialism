@@ -9,13 +9,39 @@
     "EastLongitude": "101.2"
   },
   "ImageSettings": {
-    "Width": "1053",
-    "Height": "1000"
+    "Width": 1053,
+    "Height": 1000
   },
   "MapgenStrings": {
     "BaseMapBorder": "#000000",
     "BaseMapPoint": "#FFFFFF",
     "BaseMapOceanPoint": "#6EC8FA",
     "BaseMapLakePoint": "#2F63BF"
-  }
+  },
+  "RoughnessColorMaps": [
+    {
+      "Roughness": 0.05,
+      "Name": "Plains",
+      "Weight": 150,
+      "Color": "#108D11"
+    },
+    {
+      "Roughness": 0.17,
+      "Name": "Hills",
+      "Weight": 20,
+      "Color": "#96F06E"
+    },
+    {
+      "Roughness": 0.77,
+      "Name": "Mountains",
+      "Weight": 20,
+      "Color": "#F59B14"
+    },
+    {
+      "Roughness": 0.85,
+      "Name": "Deep Mountains",
+      "Weight": 3,
+      "Color": "#B77718"
+    }
+  ]
 }

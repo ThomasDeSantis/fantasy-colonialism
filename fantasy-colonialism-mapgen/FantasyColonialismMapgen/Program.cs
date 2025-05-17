@@ -40,8 +40,10 @@ if (dbCon.IsConnect())
     //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
     //MapProvinceCreate.populateEdgesTable(dbCon);
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
-    SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
+    //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
     //Map SingletonMap = Map.Instance;
+    HeightMapGen.generateHeightMap(dbCon, parentDirectory + "\\sf-continent-heightmap.png", config,parentDirectory, "\\sf-continent-roughness.png");
+    //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 1000, 1053);
 
     dbCon.Close();
 }

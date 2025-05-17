@@ -3,6 +3,16 @@ SELECT id, x, y, provinceId, type
 FROM Points
 WHERE land = true;
 
+CREATE VIEW OceanPoints AS
+SELECT id,x, y
+FROM Points
+WHERE type = 'ocean';
+
+CREATE VIEW CoastPoints AS
+SELECT id, x, y, provinceId, type
+FROM Points p1
+WHERE coastal = true;
+    
 CREATE VIEW BorderPoints AS
 SELECT centerPoint.id, centerPoint.x, centerPoint.y, centerPoint.provinceId as centerProvince, northPoint.provinceId as northProvince, eastPoint.provinceId as eastProvince, southPoint.provinceId as southProvince, westPoint.provinceId as westProvince
 FROM LandPoints centerPoint 
