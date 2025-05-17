@@ -8,6 +8,10 @@
     "WestLongitude": "-5",
     "EastLongitude": "101.2"
   },
+  "HeightGenerationSettings": {
+    "Amplitude": 100,
+    "MaxRiseModifier": 75
+  },
   "ImageSettings": {
     "Width": 1053,
     "Height": 1000
