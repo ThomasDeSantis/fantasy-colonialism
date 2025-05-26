@@ -13,8 +13,12 @@
     "MaxRiseModifier": 75
   },
   "ImageSettings": {
+    "WorldWidth": 3604,
+    "WorldHeight": 3060,
     "Width": 1053,
-    "Height": 1000
+    "Height": 1000,
+    "MapTopLeftWidth": 1791,
+    "MapTopLeftHeight": 1174
   },
   "MapgenStrings": {
     "BaseMapBorder": "#000000",

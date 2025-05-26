@@ -39,7 +39,148 @@ namespace FantasyColonialismMapgen
         private static string truncateRenderEdges = "TRUNCATE TABLE renderEdges";
         //Gets all points in the image array that has not been allocated a point
         private static string getUnallocatedPoints = "WITH RECURSIVE nums_x AS (SELECT 0 AS x UNION ALL SELECT x + 1 FROM nums_x WHERE x < @x ), nums_y AS (SELECT 0 AS y UNION ALL SELECT y + 1 FROM nums_y WHERE y < @y ) SELECT nx.x, ny.y FROM nums_x nx CROSS JOIN nums_y ny LEFT JOIN Points p ON p.x = nx.x AND p.y = ny.y WHERE p.id IS NULL";
-        public static void processImageIntoPoints(string inputPath, DBConnection database,IConfiguration config)
+
+        public static void populatePointsAndWorldPointsFromImage(string inputPath, DBConnection database, IConfiguration config)
+        {
+            Console.WriteLine("Begin processing image into world points: " + DateTime.UtcNow.ToString());
+            //Run this to populate the world point table
+            //processImageIntoWorldPoints(inputPath, database, config);
+            Console.WriteLine("Finished processing image into world points: " + DateTime.UtcNow.ToString());
+            Console.WriteLine("Begin rendering world map points: " + DateTime.UtcNow.ToString());
+            renderWorldPointsAsImage(inputPath, database, config);
+            Console.WriteLine("Finished rendering world map points: " + DateTime.UtcNow.ToString());
+        }
+
+        public static void processImageIntoWorldPoints(string inputPath, DBConnection database, IConfiguration config)
+        {
+            //Check current max_allowed_packet
+
+
+            database.runStringNonQueryCommand("CALL `sp_TRUNCATE_POINTS`();");
+            Console.WriteLine("Image processing began: " + DateTime.UtcNow.ToString());
+            int pointId = 0; //Used 
+
+
+            Rgba32 pointColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapPoint"));
+            Rgba32 oceanColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapOceanPoint"));
+
+            List<string> batchWorldPointInsertRow = new List<string>();
+
+            using (SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath))
+            {
+                int height = image.Height;
+                int width = image.Width;
+                for (int y = 0; y < image.Height; y++)
+                {
+                  
+                    for (int x = 0; x < image.Width; x++)
+                    {
+                        if (pointId % 200000 == 0)
+                        {
+                            if(batchWorldPointInsertRow.Count > 0)
+                            {
+                                Console.WriteLine("Finished processing world point " + pointId + " points.");
+                                StringBuilder batchWorldPointInsert = new StringBuilder("INSERT INTO WorldPoints (x,y,land) VALUES ");
+                                //Finish the insert statement
+                                batchWorldPointInsert.Append(string.Join(",", batchWorldPointInsertRow));
+                                batchWorldPointInsert.Append(";");
+                                //Insert all of the white points into the DB
+                                Console.WriteLine(batchWorldPointInsert.Length);
+                                database.runStringNonQueryCommand(batchWorldPointInsert.ToString());
+                                Console.WriteLine(batchWorldPointInsertRow.Count);
+                                batchWorldPointInsertRow.Clear();
+                                Console.WriteLine(batchWorldPointInsertRow.Count);
+                            }
+                        }
+                        if (image[x, y] == pointColor)
+                        {
+                            //This pixel represents a land point. Add it to the list of lands points to be inserted.
+                            batchWorldPointInsertRow.Add(string.Format("({0},{1},true)", MySqlHelper.EscapeString(x.ToString()), MySqlHelper.EscapeString(y.ToString())));
+                            pointId++;
+                        }
+                        else if (image[x, y] == oceanColor)
+                        {
+                            //This is a ocean pixel. Add it to the list of ocean points to be inserted.
+                            batchWorldPointInsertRow.Add(string.Format("({0},{1},false)", MySqlHelper.EscapeString(x.ToString()), MySqlHelper.EscapeString(y.ToString())));
+                        }
+                        else
+                        {
+                            //If it is not either then you know the image is invalid. Throw an exception.
+                            throw new Exception("Invalid image. Point identified at " + x.ToString() + ", " + y.ToString() + " as " + image[x, y].ToString() +
+                                ". Image must only contain pixels of color " + config.GetValue<string>("MapgenStrings:BaseMapPoint") + " (land) and " + config.GetValue<string>("MapgenStrings:BaseMapOceanPoint") + " (water).");
+                        }
+                        pointId++;
+                    }
+                }
+
+                StringBuilder batchWorldPointInsertFinal = new StringBuilder("INSERT INTO WorldPoints (x,y,land) VALUES ");
+                //Finish the insert statement
+                batchWorldPointInsertFinal.Append(string.Join(",", batchWorldPointInsertRow));
+                batchWorldPointInsertFinal.Append(";");
+                //Insert all of the white points into the DB
+                Console.WriteLine(batchWorldPointInsertFinal.Length);
+                database.runStringNonQueryCommand(batchWorldPointInsertFinal.ToString());
+            }
+        }
+
+        public static void renderWorldPointsAsImage(string outputPath, DBConnection database,IConfiguration config)
+        {
+            int height = config.GetValue<int>("ImageSettings:WorldHeight");
+            int width = config.GetValue<int>("ImageSettings:WorldWidth");
+            Console.WriteLine("Height: " + height + " Width: " + width);
+            Rgba32 oceanColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapOceanPoint"));
+            // Query all world points
+            string query = "SELECT x, y, land FROM WorldPoints;";
+            var cmd = new MySqlCommand(query, database.Connection);
+            int maxX = 0, maxY = 0;
+            // Load the height map from the database
+            bool[][] worldLand = new bool[height][];
+            for (int i = 0; i < height; i++)
+            {
+                worldLand[i] = new bool[width];
+            }
+            Console.WriteLine(worldLand[0][0]);
+
+            return;
+            /*
+                using (var rdr = cmd.ExecuteReader())
+            {
+                while (rdr.Read())
+                {
+                    int x = rdr.GetInt32(0);
+                    int y = rdr.GetInt32(1);
+                    bool land = rdr.GetBoolean(2);
+                    points.Add((x, y, land));
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+
+            // Create image
+            using (var image = new SixLabors.ImageSharp.Image<Rgba32>(maxX + 1, maxY + 1))
+            {
+                foreach (var (x, y, land) in points)
+                {
+                    image[x, y] = land ? Rgba32.ParseHex("FFFFFF") : Rgba32.ParseHex("0000FF");
+                }
+                image.SaveAsPng(outputPath);
+            }
+            */
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+        public static void processImageIntoPointsAndProvinces(string inputPath, DBConnection database,IConfiguration config)
         {
             Console.WriteLine("Image processing began: " + DateTime.UtcNow.ToString());
             int pointId = 0;// Point ID that will be stored in DB

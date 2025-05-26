@@ -33,7 +33,9 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
-    //MapProvinceCreate.processImageIntoPoints(parentDirectory + "\\sf-continent.png", dbCon,config);
+
+
+    MapProvinceCreate.populatePointsAndWorldPointsFromImage(parentDirectory + "\\Maps\\land-map.png", dbCon,config);
 
     //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
     
@@ -42,7 +44,7 @@ if (dbCon.IsConnect())
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
     //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
     //Map SingletonMap = Map.Instance;
-    HeightMapGen.generateHeightMap(dbCon, parentDirectory + "\\sf-continent-heightmap.png", config,parentDirectory, "\\sf-continent-roughness.png");
+    //HeightMapGen.generateHeightMap(dbCon, parentDirectory + "\\sf-continent-heightmap.png", config,parentDirectory, "\\sf-continent-roughness.png");
     //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 1000, 1053);
 
     dbCon.Close();
