@@ -51,5 +51,22 @@
       "Weight": 3,
       "Color": "#B77718"
     }
+  ],
+  "RoughnessCoastlineSettings": {
+    "NodeColor": "#000000"
+  },
+  "RoughnessCoastlineColorMaps": [
+    {
+      "Roughness": 2,
+      "Color": "#00FF00"
+    },
+    {
+      "Roughness": 5,
+      "Color": "#FF002B"
+    },
+    {
+      "Roughness": 7,
+      "Color": "#0000FF"
+    }
   ]
 }

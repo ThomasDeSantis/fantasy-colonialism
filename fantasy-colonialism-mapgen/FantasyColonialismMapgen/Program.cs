@@ -33,12 +33,13 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
+    FractalCoastline newCoast = new FractalCoastline(parentDirectory + "\\Maps\\Fractal Coastline\\", config);
 
 
-    MapProvinceCreate.populatePointsAndWorldPointsFromImage(parentDirectory + "\\Maps\\land-map.png", dbCon,config);
+    //MapProvinceCreate.populatePointsAndWorldPointsFromImage(parentDirectory + "\\Maps\\land-map.png", dbCon,config);
 
     //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
-    
+
     //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
     //MapProvinceCreate.populateEdgesTable(dbCon);
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
