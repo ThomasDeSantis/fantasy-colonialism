@@ -15,9 +15,9 @@
   "ImageSettings": {
     "WorldWidth": 3604,
     "WorldHeight": 3060,
-    "Width": 1053,
-    "Height": 1000,
-    "MapTopLeftWidth": 1791,
+    "ViewWidth": 1053,
+    "ViewHeight": 800,
+    "MapTopLeftWidth": 1768,
     "MapTopLeftHeight": 1174
   },
   "MapgenStrings": {
@@ -52,21 +52,8 @@
       "Color": "#B77718"
     }
   ],
-  "RoughnessCoastlineSettings": {
-    "NodeColor": "#000000"
-  },
-  "RoughnessCoastlineColorMaps": [
-    {
-      "Roughness": 2,
-      "Color": "#00FF00"
-    },
-    {
-      "Roughness": 5,
-      "Color": "#FF002B"
-    },
-    {
-      "Roughness": 7,
-      "Color": "#0000FF"
-    }
-  ]
+  "CoastlineGenerationSettings": {
+    "Turbulence": 57.0,
+    "MinLandMassSize": 6
+  }
 }

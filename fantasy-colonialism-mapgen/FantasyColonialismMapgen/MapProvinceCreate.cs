@@ -57,7 +57,7 @@ namespace FantasyColonialismMapgen
 
 
             database.runStringNonQueryCommand("CALL `sp_TRUNCATE_POINTS`();");
-            Console.WriteLine("Image processing began: " + DateTime.UtcNow.ToString());
+            Console.WriteLine($"Image processing began: {DateTime.UtcNow.ToString()}");
             int pointId = 0; //Used 
 
 

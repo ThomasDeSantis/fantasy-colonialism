@@ -19,10 +19,8 @@ CREATE TABLE Points (
     y numeric,
     land bool NOT NULL DEFAULT true,
     waterSalinity decimal (3,1), /*NULL if a land point, otherwise the percentage of salt in the water. Ocean standard is 3.5%*/
-    type enum('land', 'ocean', 'lake') NOT NULL DEFAULT 'land', /*Deprecate this field for individual bools*/
     coastal bool NOT NULL default FALSE,
     provinceId numeric NOT NULL DEFAULT -1,
-    height numeric NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT `worldPointId_fk` FOREIGN KEY (worldPointId) REFERENCES WorldPoints(id) ON DELETE CASCADE
 );
