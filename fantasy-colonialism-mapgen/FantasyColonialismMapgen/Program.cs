@@ -33,7 +33,10 @@ if (dbCon.IsConnect())
     // Output the parent directory
     Console.WriteLine(parentDirectory);
 
-    FractalCoastline newCoast = new FractalCoastline(parentDirectory + "\\Maps\\Fractal Coastline\\", config);
+    FractalCoastline fractalCoastlineGenerator = new FractalCoastline(parentDirectory+"\\Maps\\Fractal Coastline\\","coastline-map-base.png",config);
+    fractalCoastlineGenerator.generateFractalCoastlineWithTurbulence();
+
+    //FractalCoastlineNodes newCoast = new FractalCoastlineNodes(parentDirectory + "\\Maps\\Fractal Coastline\\", config);
 
 
     //MapProvinceCreate.populatePointsAndWorldPointsFromImage(parentDirectory + "\\Maps\\land-map.png", dbCon,config);

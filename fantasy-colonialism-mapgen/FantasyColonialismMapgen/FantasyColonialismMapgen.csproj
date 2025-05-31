@@ -23,5 +23,8 @@
     <PackageReference Include="Svg" Version="3.4.7" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.4" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\lib\c-sharp\FastNoiseLite.cs"/>
+  </ItemGroup>
 
 </Project>
