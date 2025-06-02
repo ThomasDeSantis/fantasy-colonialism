@@ -7,6 +7,7 @@ CREATE TABLE WorldPoints (
     x numeric,
     y numeric,
     land bool NOT NULL DEFAULT true,
+    coastal bool NOT NULL default FALSE,
     height numeric NOT NULL default 0
     );
 
@@ -19,7 +20,6 @@ CREATE TABLE Points (
     y numeric,
     land bool NOT NULL DEFAULT true,
     waterSalinity decimal (3,1), /*NULL if a land point, otherwise the percentage of salt in the water. Ocean standard is 3.5%*/
-    coastal bool NOT NULL default FALSE,
     provinceId numeric NOT NULL DEFAULT -1,
     PRIMARY KEY (id),
     CONSTRAINT `worldPointId_fk` FOREIGN KEY (worldPointId) REFERENCES WorldPoints(id) ON DELETE CASCADE

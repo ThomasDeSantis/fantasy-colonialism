@@ -43,7 +43,7 @@ namespace FantasyColonialismMapgen
         public void populatePointsAndWorldPointsFromImage(string parentDirectory, DBConnection database, IConfiguration config)
         {
             Console.WriteLine($"Begin processing image into world points: {DateTime.UtcNow.ToString()}");
-            //processImageIntoWorldPoints(parentDirectory+"\\Maps\\land-map.png", database, config);
+            processImageIntoWorldPoints(parentDirectory+"\\Maps\\land-map.png", database, config);
             Console.WriteLine($"Finished processing image into world points: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin rendering world map points: {DateTime.UtcNow.ToString()}");
             renderWorldPointsAsImage(parentDirectory+"\\Maps\\world-output.png", database, config);

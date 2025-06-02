@@ -11,24 +11,27 @@ using MySql.Data.MySqlClient;
 using Mysqlx.Crud;
 using LibNoise;
 using LibNoise.Primitive;
+using LibNoise.Filter;
 
 namespace FantasyColonialismMapgen
 {
     class HeightMapGen
     {
-        public static void generateHeightMap(DBConnection db, string heightMapPath, IConfiguration config, string parentDirectory, string roughnessMap)
+        public static void generateHeightMap(DBConnection db,IConfiguration config, string parentDirectory, string roughnessMap)
         {
             /*
             Console.WriteLine("Begin setting coastal provinces: " + DateTime.UtcNow.ToString());
             setCoastalPoints(db);
             Console.WriteLine("End setting coastal provinces: " + DateTime.UtcNow.ToString());
             */
+            
 
             roughnessColorMap[] roughnessColorMaps = loadRoughnessColorMaps(config);
-            int width = config.GetValue<int>("ImageSettings:Width");
-            int height = config.GetValue<int>("ImageSettings:Height");
-            Console.WriteLine("Width: " + width + " Height: " + height);
-            Console.WriteLine("Number of roughness color maps: " + roughnessColorMaps.Length);
+            int width = config.GetValue<int>("ImageSettings:WorldWidth");
+            int height = config.GetValue<int>("ImageSettings:WorldHeight");
+            int heightSoftCap = config.GetValue<int>("HeightGenerationSettings:SoftHeightLimit");
+            Console.WriteLine($"Width: {width} Height: {height}");
+            Console.WriteLine($"Number of roughness color maps: {roughnessColorMaps.Length}");
             // Output each member of the array  
             foreach (roughnessColorMap roughness in roughnessColorMaps)
             {
@@ -36,11 +39,11 @@ namespace FantasyColonialismMapgen
                 Console.WriteLine("BMP color: " + roughness.bmpColor);
             }
             Console.WriteLine("Height map load began: " + DateTime.UtcNow.ToString());
-            pointHeight[][] heightMap = loadHeightMap(db, heightMapPath, width, height,true);
+            pointHeight[][] heightMap = loadHeightMap(db, width, height,true);
             Console.WriteLine("Height map load ended: " + DateTime.UtcNow.ToString());
 
             Console.WriteLine("Begin applying roughness: " + DateTime.UtcNow.ToString());
-            applyRoughness(heightMap, roughnessColorMaps, parentDirectory + "\\sf-continent-roughness.png");
+            applyRoughness(heightMap, roughnessColorMaps, parentDirectory + roughnessMap);
             Console.WriteLine("Finished applying roughness: " + DateTime.UtcNow.ToString());
 
             Console.WriteLine("Begin reassigning typeless points: " + DateTime.UtcNow.ToString());
@@ -52,14 +55,16 @@ namespace FantasyColonialismMapgen
             Console.WriteLine("Finished correcting coastal heights: " + DateTime.UtcNow.ToString());
 
             Console.WriteLine("Begin generating height: " + DateTime.UtcNow.ToString());
-            generateHeightMapValues(heightMap, roughnessColorMaps,config);   
+            generateHeightMapValues(heightMap, roughnessColorMaps,config, heightSoftCap);   
             Console.WriteLine("Finished generating height: " + DateTime.UtcNow.ToString());
-            //writeBaseElevations(db, heightMapPath,roughnessColorMaps);
+            
 
             int max = getMaxHeight(heightMap);
             int min = getMinHeight(heightMap);
             Console.WriteLine(max);
-            renderHeightmap(heightMap, parentDirectory + "\\sf-continent-heightmap-render.png", height, width,max,min);
+            renderHeightmap(heightMap, parentDirectory + "\\Maps\\continent-heightmap-render.png", height, width,max,min);
+
+            writeElevationsToDb(db, heightMap);
             //smoothenHeightMap(heightMap, width, height);
             //renderHeightmap(heightMap, parentDirectory + "\\sf-continent-heightmap-render-s1.png", height, width, max);
             //int min = getMinHeight(roughnessColorMaps);
@@ -72,7 +77,7 @@ namespace FantasyColonialismMapgen
             var points = new Dictionary<(int x, int y), (bool,int)>();
 
             // Query all points from the database
-            string query = "SELECT x, y, land, id FROM Points;";
+            string query = "SELECT x, y, land, id FROM WorldPoints;";
             var command = new MySqlCommand(query, db.Connection);
             MySqlDataReader reader = command.ExecuteReader();
 
@@ -103,21 +108,19 @@ namespace FantasyColonialismMapgen
                     {
                         if (points.ContainsKey(neighbor) && !points[neighbor].Item1)
                         {
-                            batchCoastalUpdateRow.Add(string.Format("UPDATE Points SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
+                            batchCoastalUpdateRow.Add(string.Format("UPDATE WorldPoints SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
                             break;
                         }
                     }
                 }
             }
 
-            StringBuilder batchCoastalUpdate = new StringBuilder(string.Join("; ", batchCoastalUpdateRow));
-
-            db.runStringNonQueryCommand(batchCoastalUpdate.ToString());
+            db.runStringNonQueryCommandBatch("","", batchCoastalUpdateRow, 1000,';', true);
         }
 
         public static void renderCoastline(DBConnection db, string coastLineMapPath, int height, int width)
         {
-            string query = "SELECT x, y, coastal, land FROM POINTS";
+            string query = "SELECT x, y, coastal, land FROM WorldPoints";
             var command = new MySqlCommand(query, db.Connection);
             MySqlDataReader reader = command.ExecuteReader();
             // Create a new image with the specified dimensions
@@ -146,11 +149,13 @@ namespace FantasyColonialismMapgen
                         }
                     }
                 }
+
+                reader.Close();
                 image.Save(coastLineMapPath);
             }
         }
 
-        private static pointHeight[][] loadHeightMap(DBConnection db, string heightMapPath, int width, int height, bool defaultInit)
+        private static pointHeight[][] loadHeightMap(DBConnection db, int width, int height, bool defaultInit)
         {
 
             // Load the height map from the database
@@ -175,7 +180,7 @@ namespace FantasyColonialismMapgen
             }
 
             //Query all points sorted by x and y
-            string getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM Points ORDER BY x, y;";
+            string getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM WorldPoints ORDER BY x, y;";
             var queryCmd = new MySqlCommand(getAllPointsQuery, db.Connection);
             MySqlDataReader rdr = queryCmd.ExecuteReader();
             while (rdr.Read())
@@ -203,6 +208,7 @@ namespace FantasyColonialismMapgen
                 heightMap[y][x].id = rdr.GetInt32(5);
                 heightMap[y][x].roughness = 0.01f; // Default roughness value
             }
+            rdr.Close();
             return heightMap;
         }
 
@@ -345,12 +351,12 @@ namespace FantasyColonialismMapgen
             return min;
         }
 
-        private static void generateHeightMapValues(pointHeight[][] heightMap, roughnessColorMap[] roughnessColorMaps,IConfiguration config)
+        private static void generateHeightMapValues(pointHeight[][] heightMap, roughnessColorMap[] roughnessColorMaps,IConfiguration config, int heightSoftCap)
         {
             var generationSettings = config.GetSection("HeightGenerationSettings");
             int amplitude = generationSettings.GetValue<int>("Amplitude");
             HeightQueue heightQueue = new HeightQueue(heightMap,roughnessColorMaps,config);
-            var perlin = new ImprovedPerlin();
+            var noise = new MultifractalNoise();
 
             // Generate heightmap with noise
             int width = heightMap[0].GetLength(0);
@@ -364,7 +370,7 @@ namespace FantasyColonialismMapgen
 
             while (heightQueue.getCumulativePointsToCalc() > 0)
             {
-                if((c % 50000) == 0)
+                if ((c % 50000) == 0)
                 {
                     Console.WriteLine("Cumulative points to calc: " + heightQueue.getCumulativePointsToCalc());
                     heightQueue.writePointsProcessed();
@@ -375,9 +381,36 @@ namespace FantasyColonialismMapgen
                 }
                 (int, int) coords = heightQueue.dequeueWeightlessPlainsHillsWeightedMountains();
                 int avgHeight = heightQueue.getAverageHeightAndPushPoints(coords.Item1, coords.Item2);
-                float perlinOffset = heightQueue.getPerlinOffset(coords.Item1, coords.Item2);
-                float offset = heightQueue.getOffset(coords.Item1, coords.Item2, (float)avgHeight) + perlinOffset ;
+                float noiseOffset = heightQueue.getNoiseOffset(coords.Item1, coords.Item2);
+                float offset = heightQueue.getOffset(coords.Item1, coords.Item2, (float)avgHeight) + noiseOffset;
+
+                //Lower offset if above the soft height cap
+                if (avgHeight < heightSoftCap + 5000)
+                {
+                    offset *= .8f;
+                } else if (avgHeight < heightSoftCap + 4000)
+                {
+                    offset *= .20f;
+                } else if (avgHeight < heightSoftCap + 3000)
+                {
+                    offset *= .35f;
+                }
+                else if (avgHeight < heightSoftCap + 2000)
+                {
+                    offset *= .55f;
+                }
+                else if (avgHeight < heightSoftCap + 1000)
+                {
+                    offset *= .75f;
+                }
+                else if (avgHeight < heightSoftCap)
+                {
+                    offset *= .8f;
+                }
+
                 float riseRatio = heightQueue.getMountainRiseRatio(coords.Item1, coords.Item2, avgHeight);
+
+                //Console.WriteLine($"Coords: {coords} avgHeight: {avgHeight} noiseOffset: {noiseOffset} offset: {offset}");
                 heightMap[coords.Item2][coords.Item1].height = (int)((avgHeight + ((float)amplitude * heightMap[coords.Item2][coords.Item1].roughness * riseRatio)) + offset);
                 //Console.WriteLine(avgHeight - heightMap[coords.Item2][coords.Item1].height);
                 if(avgHeight - heightMap[coords.Item2][coords.Item1].height > 1000)
@@ -471,14 +504,15 @@ namespace FantasyColonialismMapgen
                     roughness = float.Parse(section["roughness"]),
                     name = section["name"],
                     bmpColor = Rgba32.ParseHex(section["color"]),
-                    weight = int.Parse(section["weight"])
+                    weight = int.Parse(section["weight"]),
+                    noiseAmplitude = float.Parse(section["noiseAmplitude"])
                 })
                 .ToArray();
 
             return elevationColorMaps;
         }
 
-        private static void writeElevationsToDb(DBConnection db, string heightMapPath, pointHeight[][] heightMap)
+        private static void writeElevationsToDb(DBConnection db, pointHeight[][] heightMap)
         {
 
             int width = heightMap[0].GetLength(0);
@@ -487,41 +521,19 @@ namespace FantasyColonialismMapgen
 
             List<string> batchHeightUpdateRow = new List<string>();
 
-            for (int y = 0; y < width; y++)
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < height; x++)
+                for (int x = 0; x < width; x++)
                 {
                     if (!heightMap[y][x].water)
                     {
-                        batchHeightUpdateRow.Add(string.Format("UPDATE Points SET height = {0}, type = {1} WHERE id = {2}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()), MySqlHelper.EscapeString((heightMap[y][x].type.ToLower())), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
+                        batchHeightUpdateRow.Add(string.Format("UPDATE WorldPoints SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
                     }
                 }
             }
 
-            StringBuilder batchHeightUpdate = new StringBuilder(string.Join("; ", batchHeightUpdateRow));
 
-            db.runStringNonQueryCommand(batchHeightUpdateRow.ToString());
-        }
-
-        private static void smoothenHeightMap(pointHeight[][] heightMap, int width, int height)
-        {
-            int c = 0;
-            for (int y = 1; y < height - 1; y++)
-            {
-                for (int x = 1; x < width - 1; x++)
-                {
-                    if (c % 50000 == 0)
-                    {
-                        Console.WriteLine(c + " smoothed");
-                    }
-                    int avgHeight = getAverageHeightInRadius(x, y, 3, heightMap);
-                    if(Math.Abs((heightMap[y][x].height + avgHeight)/2) > 200)
-                    {
-                        heightMap[y][x].height = (int)((heightMap[y][x].height + avgHeight) / 2);
-                    }
-                    c++;
-                }
-            }
+            db.runStringNonQueryCommandBatch("","",batchHeightUpdateRow,2500,';',true);
         }
 
         private static int getAverageHeightInRadius(int x, int y, int radius, pointHeight[][] heightMap)
@@ -567,6 +579,7 @@ namespace FantasyColonialismMapgen
         public string name;
         public Rgba32 bmpColor;
         public int weight;
+        public float noiseAmplitude;
     }
     public struct pointHeight
     {

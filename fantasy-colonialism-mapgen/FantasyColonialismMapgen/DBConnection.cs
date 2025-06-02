@@ -1,5 +1,6 @@
 ﻿using MySql.Data;
 using MySql.Data.MySqlClient;
+using System.Text;
 
 namespace FantasyColonialismMapgen
 {
@@ -56,6 +57,45 @@ namespace FantasyColonialismMapgen
         {
             MySqlCommand cmd = new MySqlCommand(command, Connection);
             cmd.ExecuteNonQuery();
+        }
+
+        public void runStringNonQueryCommandBatch(string commandPrefix,string commandSuffix, List<string> commands, int batchSize,char joinChar, bool log)
+        {
+            if (log)
+            {
+                Console.WriteLine($"Running batch command with prefix: {commandPrefix}");
+                Console.WriteLine($"Total commands to process: {commands.Count}");
+                Console.WriteLine($"Batch size: {batchSize}");
+            }
+            List<string> batchCommands = new List<string>();
+            for (int i = 0; i < commands.Count; i++)
+            {
+                batchCommands.Add(commands[i]);
+                if (i % batchSize == 0)
+                {
+                    if (batchCommands.Count > 0)
+                    {
+                        if (log)
+                        {
+                            Console.WriteLine($"Finished processing {i} commands at {DateTime.UtcNow.ToString()}");
+                        }
+                        StringBuilder batchCommandStringBuilder = new StringBuilder(commandPrefix);
+                        //Finish the insert statement
+                        batchCommandStringBuilder.Append(string.Join(joinChar, batchCommands));
+                        batchCommandStringBuilder.Append(commandSuffix);
+                        runStringNonQueryCommand(batchCommandStringBuilder.ToString());
+                        batchCommands.Clear();
+                        Console.WriteLine(batchCommands.Count);
+                    }
+                }
+            }
+
+
+            StringBuilder batchCommandStringBuilderFinal = new StringBuilder(commandPrefix);
+            //Finish the insert statement
+            batchCommandStringBuilderFinal.Append(string.Join(joinChar, batchCommands));
+            batchCommandStringBuilderFinal.Append(";");
+            runStringNonQueryCommand(batchCommandStringBuilderFinal.ToString());
         }
     }
 }

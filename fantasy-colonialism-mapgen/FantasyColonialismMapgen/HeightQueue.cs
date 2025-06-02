@@ -17,28 +17,35 @@ namespace FantasyColonialismMapgen
         private int plainsWeight;
         private float plainsBaseRoughness;
         private int plainsProcessed = 0;
+        private float plainsNoiseAmplitude;
         private List<(int, int)> hillsToProcess;
         private int hillsWeight;
         private float hillsBaseRoughness;
         private int hillsProcessed = 0;
+        private float hillsNoiseAmplitude;
         private List<(int, int)> mountainsToProcess;
         private List<MountainRange> mountainRangesToProcess;
         private Dictionary<(int, int), int> pointToMountainRange = new Dictionary<(int, int), int>();
         private int mountainsWeight;
         private float mountainsBaseRoughness;
         private int mountainsProcessed = 0;
+        private float mountainsNoiseAmplitude;
         private List<(int, int)> deepMountainsToProcess = new List<(int, int)>();
         int deepMountainsWeight;
         private float deepMountainsBaseRoughness;
         private int deepMountainsProcessed = 0;
+        private float deepMountainsNoiseAmplitude; 
 
         private float shortMountainMaximumRiseModifier;
 
         private bool mountainRangePopulated = false;
 
-        private Perlin perlin = new Perlin();
+        private MultifractalNoise noise = new MultifractalNoise();
 
         private int amplitude = 0;
+
+        private int width;
+        private int height;
 
         public HeightQueue(pointHeight[][] heightMapRef, roughnessColorMap[] roughnessColorMaps, IConfiguration config)
         {
@@ -51,6 +58,10 @@ namespace FantasyColonialismMapgen
 
             var generationSettings = config.GetSection("HeightGenerationSettings");
             shortMountainMaximumRiseModifier = generationSettings.GetValue<int>("MaxRiseModifier");
+
+            width = config.GetValue<int>("ImageSettings:WorldWidth");
+            height = config.GetValue<int>("ImageSettings:WorldHeight");
+
             amplitude = generationSettings.GetValue<int>("Amplitude");
 
             foreach (var roughnessMap in roughnessColorMaps)
@@ -59,25 +70,29 @@ namespace FantasyColonialismMapgen
                 {
                     plainsWeight = roughnessMap.weight;
                     plainsBaseRoughness = roughnessMap.roughness;
+                    plainsNoiseAmplitude = roughnessMap.noiseAmplitude;
                 }
                 else if (roughnessMap.name == "Hills")
                 {
                     hillsWeight = roughnessMap.weight;
                     hillsBaseRoughness = roughnessMap.roughness;
+                    hillsNoiseAmplitude = roughnessMap.noiseAmplitude;
                 }
                 else if (roughnessMap.name == "Mountains")
                 {
                     mountainsWeight = roughnessMap.weight;
                     mountainsBaseRoughness = roughnessMap.roughness;
+                    mountainsNoiseAmplitude = roughnessMap.noiseAmplitude;
                 }
                 else if (roughnessMap.name == "Deep Mountains")
                 {
                     deepMountainsWeight = roughnessMap.weight;
                     deepMountainsBaseRoughness = roughnessMap.roughness;
+                    deepMountainsNoiseAmplitude = roughnessMap.noiseAmplitude;
                 }
             }
             rand = new Random();
-            perlin = new Perlin();
+            noise = new MultifractalNoise();
         }
 
         public void enqueue(int x, int y)
@@ -386,37 +401,41 @@ namespace FantasyColonialismMapgen
             }
         }
 
-        public float getPerlinOffset(int x, int y)
+        public float getNoiseOffset(int x, int y)
         {
             string type = heightMap[y][x].type;
-            float perlinValue = perlin.getPerlin(x, y);
-            if (perlinValue > 1f)
+            float noiseValue = noise.GetNoise(x, y);
+            //Console.WriteLine("noiseValue: " + noiseValue);
+            if (noiseValue > 1f)
             {
-                perlinValue = 1f;
+                noiseValue = 1f;
             }
-            else if(perlinValue < -1f)
+            else if(noiseValue < -1f)
             {
-                perlinValue = -1f;
+                noiseValue = -1f;
             }
-                float offset = 0f;
+
+            float offset = 0f;
+
             if (type == "Plains")
             {
-                offset = perlinValue * amplitude * plainsBaseRoughness;
+                offset = noiseValue * plainsNoiseAmplitude;
             }
             else if (type == "Hills")
             {
-                offset = perlinValue * amplitude * hillsBaseRoughness;
+                offset = noiseValue * hillsNoiseAmplitude;
             }
             else if (type == "Mountains")
             {
-                offset = perlinValue * amplitude * mountainsBaseRoughness;
+                offset = noiseValue * mountainsNoiseAmplitude;
             }
             else if (type == "Deep Mountains")
             {
-                offset = perlinValue * amplitude * deepMountainsBaseRoughness;
+                offset = noiseValue * deepMountainsNoiseAmplitude;
             }
-            //Console.WriteLine("Perlin offset: " + perlinValue + " Offset: " + offset);
-            return offset * 7.5f;
+            //Console.WriteLine("Perlin offset: " + noiseValue + " Offset: " + offset);
+
+            return offset;
         }
         public float getOffset(int x, int y, float avgHeight)
         {
@@ -499,7 +518,7 @@ namespace FantasyColonialismMapgen
                 int count = 0;
                 foreach (var point in mountainRangesToProcess[i].points)
                 {
-                    var neighbors = Point.getNeighborsSquare((point.Item1, point.Item2));
+                    var neighbors = Point.getNeighborsSquareSafe((point.Item1, point.Item2),width,height);
                     foreach (var neighbor in neighbors)
                     {
                         int xN = neighbor.Item1;
@@ -614,7 +633,7 @@ namespace FantasyColonialismMapgen
             int totalHeight = 0;
             int count = 0;
             // Get the neighbors of the point
-            var neighbors = Point.getNeighborsSquare((x, y));
+            var neighbors = Point.getNeighborsSquareSafe((x, y), width, height);
             foreach (var neighbor in neighbors)
             {
                 int xN = neighbor.Item1;

@@ -9,3 +9,9 @@ ON Points (worldPointId);
 
 CREATE INDEX xy
 ON WorldPoints (x,y);
+
+CREATE INDEX id
+ON WorldPoints (id);
+
+CREATE INDEX id
+ON Points (id);

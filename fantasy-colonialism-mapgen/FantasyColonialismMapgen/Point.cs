@@ -65,6 +65,25 @@ namespace FantasyColonialismMapgen
             };
         }
 
+        public static List<(int, int)> getNeighborsPlusSafe((int, int) point, int width, int height)
+        {
+            int x = point.Item1;
+            int y = point.Item2;
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y), // left
+                (x + 1, y), // right
+                (x, y - 1), // up
+                (x, y + 1)  // down
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
+        }
+
         //Returns coordinates of the neighbors of a point in a x shape
         public static List<(int, int)> getNeighborsX((int,int) point)
         {
@@ -77,6 +96,26 @@ namespace FantasyColonialismMapgen
                 (x + 1, y - 1), // up right
                 (x + 1, y + 1) // down right
             };
+        }
+
+        //Returns coordinates of the neighbors of a point in a x shape
+        public static List<(int, int)> getNeighborsXSafe((int, int) point, int width, int height)
+        {
+            int x = point.Item1;
+            int y = point.Item2;
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y - 1), // up left
+                (x -1, y + 1), // down left
+                (x + 1, y - 1), // up right
+                (x + 1, y + 1) // down right
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
         }
 
         //Returns coordinates of the neighbors of a point in a plus shape
@@ -95,6 +134,30 @@ namespace FantasyColonialismMapgen
                 (x + 1, y - 1), // up right
                 (x + 1, y + 1) // down right
             };
+        }
+
+        //Returns coordinates of the neighbors of a point in a plus shape
+        public static List<(int, int)> getNeighborsSquareSafe((int, int) point, int width, int height)
+        {
+            int x = point.Item1;
+            int y = point.Item2;
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y), // left
+                (x + 1, y), // right
+                (x, y - 1), // up
+                (x, y + 1),  // down
+                (x - 1, y - 1), // up left
+                (x -1, y + 1), // down left
+                (x + 1, y - 1), // up right
+                (x + 1, y + 1) // down right
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
         }
 
         //Returns the closest point to the given point within the given province
