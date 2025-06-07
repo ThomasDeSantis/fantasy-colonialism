@@ -175,7 +175,7 @@ namespace FantasyColonialismMapgen
             return;
         }
 
-        private void renderViewPointsAsImage(string outputPath, DBConnection database, IConfiguration config)
+        public void renderViewPointsAsImage(string outputPath, DBConnection database, IConfiguration config)
         {
 
             int pointWidth = 0;
@@ -248,7 +248,7 @@ namespace FantasyColonialismMapgen
             return;
         }
 
-        private void loadViewPointTableFromDB(DBConnection database)
+        public void loadViewPointTableFromDB(DBConnection database)
         {
             
 
@@ -286,7 +286,7 @@ namespace FantasyColonialismMapgen
                     salinity = 3.5f;
                 }
                 batchViewPointInsertRow.Add(string.Format("({0},{1},{2},{3},NULLIF({4},-1))", MySqlHelper.EscapeString(point.Item1.ToString()), MySqlHelper.EscapeString(point.Item2.ToString()), MySqlHelper.EscapeString(point.Item3.ToString()),point.Item4, salinity));
-                if (i % 20000 == 0 && i > 0)
+                /*if (i % 20000 == 0 && i > 0)
                 {
                     Console.WriteLine($"Finished processing view point {i} points."); 
                     //Finish the insert statement
@@ -297,8 +297,9 @@ namespace FantasyColonialismMapgen
                     batchViewPointInsert.Clear();
                     batchViewPointInsert.Append("INSERT INTO Points (x,y,worldPointId,land,waterSalinity) VALUES ");
                     batchViewPointInsertRow.Clear();
-                }
+                }*/
             }
+            database.runStringNonQueryCommandBatch("INSERT INTO Points (x,y,worldPointId,land,waterSalinity) VALUES ", ";", batchViewPointInsertRow, 20000, ',', true);
         }
     }
 }

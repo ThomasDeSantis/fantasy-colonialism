@@ -39,7 +39,7 @@ namespace FantasyColonialismMapgen
                 Console.WriteLine("BMP color: " + roughness.bmpColor);
             }
             Console.WriteLine("Height map load began: " + DateTime.UtcNow.ToString());
-            pointHeight[][] heightMap = loadHeightMap(db, width, height,true);
+            pointHeight[][] heightMap = loadHeightMap(db, width, height,true,true,config);
             Console.WriteLine("Height map load ended: " + DateTime.UtcNow.ToString());
 
             Console.WriteLine("Begin applying roughness: " + DateTime.UtcNow.ToString());
@@ -64,7 +64,8 @@ namespace FantasyColonialismMapgen
             Console.WriteLine(max);
             renderHeightmap(heightMap, parentDirectory + "\\Maps\\continent-heightmap-render.png", height, width,max,min);
 
-            writeElevationsToDb(db, heightMap);
+            writeElevationsToDbWorldPoints(db, heightMap);
+            writeElevationsToDbPoints(db);
             //smoothenHeightMap(heightMap, width, height);
             //renderHeightmap(heightMap, parentDirectory + "\\sf-continent-heightmap-render-s1.png", height, width, max);
             //int min = getMinHeight(roughnessColorMaps);
@@ -155,7 +156,7 @@ namespace FantasyColonialismMapgen
             }
         }
 
-        private static pointHeight[][] loadHeightMap(DBConnection db, int width, int height, bool defaultInit)
+        private static pointHeight[][] loadHeightMap(DBConnection db, int width, int height, bool defaultInit, bool worldPoints,IConfiguration config)
         {
 
             // Load the height map from the database
@@ -180,9 +181,22 @@ namespace FantasyColonialismMapgen
             }
 
             //Query all points sorted by x and y
-            string getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM WorldPoints ORDER BY x, y;";
+            string getAllPointsQuery = "";
+            if (worldPoints)
+            {
+                getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM WorldPoints ORDER BY x, y;";
+            }
+            else
+            {
+                getAllPointsQuery = "SELECT x, y, land, height, 0, id FROM Points ORDER BY x, y;";
+            }
+
+            int widthOffset = config.GetValue<int>("ImageSettings:MapTopLeftWidth");
+            int heightOffset = config.GetValue<int>("ImageSettings:MapTopLeftHeight");
+
             var queryCmd = new MySqlCommand(getAllPointsQuery, db.Connection);
             MySqlDataReader rdr = queryCmd.ExecuteReader();
+
             while (rdr.Read())
             {
                 if (rdr.GetInt32(0) == 0 && (rdr.GetInt32(1) % 100) == 0)
@@ -191,6 +205,11 @@ namespace FantasyColonialismMapgen
                 }
                 int x = rdr.GetInt32(0);
                 int y = rdr.GetInt32(1);
+                if (!worldPoints)
+                {
+                    x -= widthOffset;
+                    y -= heightOffset;
+                }
                 heightMap[y][x].coastal = rdr.GetBoolean(4);
                 if (defaultInit && (!heightMap[y][x].coastal))
                 {
@@ -452,6 +471,38 @@ namespace FantasyColonialismMapgen
             }
         }
 
+        public static void renderViewHeightmap(DBConnection db,string heightMapOutputPath, IConfiguration config)
+        {
+            int viewWidth = config.GetValue<int>("ImageSettings:ViewWidth");
+            int viewHeight = config.GetValue<int>("ImageSettings:ViewHeight");
+            pointHeight[][] heightMap = loadHeightMap(db, viewWidth, viewHeight, false,false, config);
+
+            int min = getMinHeight(heightMap);
+            int max = getMaxHeight(heightMap);
+
+            using (SixLabors.ImageSharp.Image<Rgba32> image = new SixLabors.ImageSharp.Image<Rgba32>(viewWidth, viewHeight))
+            {
+                for (int y = 0; y < image.Height; y++)
+                {
+                    for (int x = 0; x < image.Width; x++)
+                    {
+                        // Set the pixel color based on the height value
+                        if (heightMap[y][x].water)
+                        {
+                            image[x, y] = Rgba32.ParseHex("#0000FF"); // Water color
+                        }
+                        else
+                        {
+                            // You can customize this mapping based on your needs
+                            Rgba32 color = getColorFromElevation(heightMap[y][x].height, min, (max + (int)((float)max * .1f)));
+                            image[x, y] = color;
+                        }
+                    }
+                }
+                image.Save(heightMapOutputPath);
+            }
+        }
+
         private static float getRoughnessFromColor(Rgba32 color, roughnessColorMap[] roughnessColorMaps)
         {
             // Find the elevation range for the given color
@@ -512,7 +563,7 @@ namespace FantasyColonialismMapgen
             return elevationColorMaps;
         }
 
-        private static void writeElevationsToDb(DBConnection db, pointHeight[][] heightMap)
+        private static void writeElevationsToDbWorldPoints(DBConnection db, pointHeight[][] heightMap)
         {
 
             int width = heightMap[0].GetLength(0);
@@ -534,6 +585,32 @@ namespace FantasyColonialismMapgen
 
 
             db.runStringNonQueryCommandBatch("","",batchHeightUpdateRow,2500,';',true);
+        }
+
+        //This reflects the height on the world points table onto the points table
+        //Is redundant but the intent is for the points table to be queried much more often than world points
+        public static void writeElevationsToDbPoints(DBConnection db)
+        {
+            string query = "SELECT p1.id, p2.height FROM Points p1 JOIN WorldPoints p2 on p1.worldPointId = p2.id;";
+            var cmd = new MySqlCommand(query, db.Connection);
+            MySqlDataReader rdr = cmd.ExecuteReader();
+            List<string> batchHeightUpdateRow = new List<string>();
+            while (rdr.Read())
+            {
+                int id = rdr.GetInt32(0);
+                int height = rdr.GetInt32(1);
+                batchHeightUpdateRow.Add(string.Format("UPDATE Points SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(height.ToString()), MySqlHelper.EscapeString(id.ToString())));
+            }
+            rdr.Close();
+
+            if (batchHeightUpdateRow.Count > 0)
+            {
+                db.runStringNonQueryCommandBatch("", "", batchHeightUpdateRow, 2500, ';', true);
+            }
+            else
+            {
+                throw new Exception("No points found to update heights for in the Points table. Please ensure entire.");
+            }
         }
 
         private static int getAverageHeightInRadius(int x, int y, int radius, pointHeight[][] heightMap)

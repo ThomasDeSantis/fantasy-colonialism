@@ -36,9 +36,12 @@ if (dbCon.IsConnect())
     //FractalCoastline fractalCoastlineGenerator = new FractalCoastline(parentDirectory+"\\Maps\\Fractal Coastline\\","coastline-map-base.png",config);
     //fractalCoastlineGenerator.generateFractalCoastlineWithTurbulence();
 
-    //WorldGen worldGenerator = new WorldGen(parentDirectory + "\\Maps\\land-map.png", config);
+    WorldGen worldGenerator = new WorldGen(parentDirectory + "\\Maps\\land-map.png", config);
 
     //worldGenerator.populatePointsAndWorldPointsFromImage(parentDirectory, dbCon,config);
+
+    //worldGenerator.loadViewPointTableFromDB(dbCon);
+    //worldGenerator.renderViewPointsAsImage(parentDirectory + "\\Maps\\view-output.png", dbCon, config);
 
     //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
 
@@ -47,8 +50,10 @@ if (dbCon.IsConnect())
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
     //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
     //Map SingletonMap = Map.Instance;
-    HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
+    //HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
     //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 3060, 3604);
+    //HeightMapGen.writeElevationsToDbPoints(dbCon);
+    HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png",config);
 
     dbCon.Close();
 }
