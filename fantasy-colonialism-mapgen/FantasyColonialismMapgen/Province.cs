@@ -8,20 +8,22 @@ using System.Threading.Tasks;
 
 namespace FantasyColonialismMapgen
 {
+    //Currently deprecated
     class Province
     {
+        /*
         //Write the avgX and avgY of each province to the DB
         public static void calculateProvincesAverages(DBConnection database)
-        {
+        {FROM \"Points\"
             //TODO: see if I can update this into a single query
-            //UPDATE Provinces p1 JOIN (SELECT AVG(x) as pointsAvgX, AVG(y) as pointsAvgY, provinceId from Points GROUP BY provinceId) p2 ON p1.id = p2.provinceid SET p1.avgX = p2.pointsAvgX AND p1.avgY = p2.pointsAvgY;"
+            //UPDATE Provinces p1 JOIN (SELECT AVG(x) as pointsAvgX, AVG(y) as pointsAvgY, provinceId  GROUP BY provinceId) p2 ON p1.id = p2.provinceid SET p1.avgX = p2.pointsAvgX AND p1.avgY = p2.pointsAvgY;"
 
-            string getAllProvincesQuery = "SELECT provinceId, FORMAT(AVG(x),0), FORMAT(AVG(y),0) FROM Points WHERE land = true GROUP BY provinceId;";
-            string getXYProvinceQuery = "SELECT provinceId FROM Points WHERE x = @x and y = @y and land = true;";
+            string getAllProvincesQuery = "SELECT provinceId, FORMAT(AVG(x),0), FORMAT(AVG(y),0) FROM \"Points\" WHERE land = true GROUP BY provinceId;";
+            string getXYProvinceQuery = $"SELECT provinceId FROM \"Points\" WHERE x = @x and y = @y and land = true;";
             string provinceUpdateQuery = "UPDATE provinces SET avgX = @avgX, avgY = @avgY WHERE id = @id";
-            var queryCmd = new MySqlCommand(getAllProvincesQuery, database.Connection);
-            var queryXYCmd = new MySqlCommand(getXYProvinceQuery, database.Connection);
-            var updateCmd = new MySqlCommand(provinceUpdateQuery, database.Connection);
+            var queryCmd = new MySqlCommand(getAllProvincesQuery, database.dataSource);
+            var queryXYCmd = new MySqlCommand(getXYProvinceQuery, database.dataSource);
+            var updateCmd = new MySqlCommand(provinceUpdateQuery, database.dataSource);
 
             MySqlDataReader rdr = queryCmd.ExecuteReader();
 
@@ -77,7 +79,7 @@ namespace FantasyColonialismMapgen
         public static List<int> getListOfProvinces(DBConnection database)
         {
             List<int> provinces = new List<int>();
-            var cmd = new MySqlCommand("SELECT DISTINCT id FROM provinces;", database.Connection);
+            var cmd = new MySqlCommand("SELECT DISTINCT id FROM provinces;", database.dataSource);
             var rdr = cmd.ExecuteReader();
             while (rdr.Read())
             {
@@ -86,5 +88,6 @@ namespace FantasyColonialismMapgen
             rdr.Close();
             return provinces;
         }
+        */
     }
 }

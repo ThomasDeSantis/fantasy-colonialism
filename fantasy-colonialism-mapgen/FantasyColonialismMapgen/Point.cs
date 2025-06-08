@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -164,11 +165,9 @@ namespace FantasyColonialismMapgen
         //Use BFS to ensure you arent just using the first you find, but to ensure it will be the closest (or at least close to it)
         public static (int, int) findClosestPointWithinAProvince(int provinceId, int x, int y, DBConnection database)
         {
-            string getPointsInProvinceQuery = "SELECT x, y FROM Points WHERE provinceId = @provinceId";
-            var getPointsCmd = new MySqlCommand(getPointsInProvinceQuery, database.Connection);
-            getPointsCmd.Parameters.AddWithValue("@provinceId", provinceId);
+            string getPointsInProvinceQuery = $"SELECT x, y FROM \"Points\" WHERE provinceId = {provinceId};";
+            NpgsqlDataReader rdr = database.runQueryCommand(getPointsInProvinceQuery);
 
-            MySqlDataReader rdr = getPointsCmd.ExecuteReader();
             List<(int, int)> pointsInProvince = new List<(int, int)>();
 
             while (rdr.Read())
@@ -209,10 +208,9 @@ namespace FantasyColonialismMapgen
 
         public static List<(int provinceId, int x, int y)> getListOfAllPointsWithProvinces(DBConnection database)
         {
-            string query = "SELECT provinceId, x, y FROM Points WHERE land = true ORDER BY provinceId ";
-            var cmd = new MySqlCommand(query, database.Connection);
+            string query = "SELECT provinceId, x, y FROM \"Points\" WHERE land = true ORDER BY provinceId ";
 
-            MySqlDataReader rdr = cmd.ExecuteReader();
+            NpgsqlDataReader rdr = database.runQueryCommand(query);
             List<(int provinceId, int x, int y)> pointsWithProvinces = new List<(int provinceId, int x, int y)>();
 
             while (rdr.Read())
@@ -226,10 +224,10 @@ namespace FantasyColonialismMapgen
 
         public static List<(int x, int y)> getListOfAllOceanPointsWithProvinces(DBConnection database)
         {
-            string query = "SELECT x, y FROM Points WHERE type = 'ocean'";
-            var cmd = new MySqlCommand(query, database.Connection);
+            string query = "SELECT x, y FROM \"Points\" WHERE type = 'ocean'";
 
-            MySqlDataReader rdr = cmd.ExecuteReader();
+            NpgsqlDataReader rdr = database.runQueryCommand(query);
+
             List<(int x, int y)> oceanPoints = new List<(int x, int y)>();
 
             while (rdr.Read())
@@ -243,10 +241,9 @@ namespace FantasyColonialismMapgen
 
         public static List<(int x, int y)> getListOfAllLakePointsWithProvinces(DBConnection database)
         {
-            string query = "SELECT x, y FROM Points WHERE type = 'lake'";
-            var cmd = new MySqlCommand(query, database.Connection);
+            string query = "SELECT x, y FROM \"Points\" WHERE type = 'lake'";
+            NpgsqlDataReader rdr = database.runQueryCommand(query);
 
-            MySqlDataReader rdr = cmd.ExecuteReader();
             List<(int x, int y)> lakePoints = new List<(int x, int y)>();
 
             while (rdr.Read())
@@ -266,18 +263,14 @@ namespace FantasyColonialismMapgen
             string query = null;
             if (plus)
             {
-                query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
+                query = $"SELECT provinceId from \"Points\" WHERE (x = ({point.Item1} + 1) AND y = {point.Item2}) OR (x = ({point.Item1} - 1) AND y = {point.Item2}) OR (x = {point.Item1} AND y = ({point.Item2} + 1)) OR (x = {point.Item1} AND y = ({point.Item2} - 1)) AND land = true;";
             }
             else
             {
-                query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = (@y + 1)) OR (x = (@x - 1) AND y = (@y - 1)) OR (x = (@x + 1) AND y = (@y - 1)) OR (x = (@x - 1) AND y = (@y + 1)) AND land = true";
+                query = $"SELECT provinceId from \"Points\" WHERE (x = ({point.Item1} + 1) AND y = ({point.Item2} + 1)) OR (x = ({point.Item1} - 1) AND y = ({point.Item2} - 1)) OR (x = ({point.Item1} + 1) AND y = ({point.Item2} - 1)) OR (x = ({point.Item1} - 1) AND y = ({point.Item2} + 1)) AND land = true";
             }
 
-            var cmd = new MySqlCommand(query, database.Connection);
-            cmd.Parameters.AddWithValue("@x", point.Item1);
-            cmd.Parameters.AddWithValue("@y", point.Item2);
-
-            MySqlDataReader rdr = cmd.ExecuteReader();
+            NpgsqlDataReader rdr = database.runQueryCommand(query);
 
             List<int> provinces = new List<int>();
 
@@ -303,7 +296,7 @@ namespace FantasyColonialismMapgen
         //Returns a province id if there is at least one valid province, returns -1 if there are no valid provinces  
         public static int getNeighborValidPoint(Dictionary<(int,int),int> validPoints, (int, int) point)
         {
-            string query = "SELECT provinceId from Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
+            //string query = $"SELECT provinceId from  Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
             List<int> provinces = new List<int>();
 
             //Retrieve the north,east,south, and west province ids by referencing the dictionary
@@ -348,9 +341,8 @@ namespace FantasyColonialismMapgen
 
         public static Dictionary<(int,int), int> retrieveAllValidLandPoints(DBConnection database)
         {
-            string query = "SELECT x, y, provinceId FROM Points WHERE land = true and provinceId IS NOT NULL";
-            var cmd = new MySqlCommand(query, database.Connection);
-            MySqlDataReader rdr = cmd.ExecuteReader();
+            string query = "SELECT x, y, provinceId FROM \"Points\" WHERE land = true and provinceId IS NOT NULL";
+            NpgsqlDataReader rdr = database.runQueryCommand(query);
             Dictionary<(int, int), int> validLandPoints = new Dictionary<(int, int), int>();
             while (rdr.Read())
             {

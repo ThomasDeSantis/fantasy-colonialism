@@ -15,15 +15,11 @@ string connectionString = config.GetConnectionString("DatabaseConnection");
 
 //Parse connection string
 var dbCon = DBConnection.Instance();
-var connectionStringBuilder = new MySqlConnectionStringBuilder(connectionString);
-dbCon.Server = connectionStringBuilder.Server;
-dbCon.DatabaseName = connectionStringBuilder.Database;
-dbCon.UserName = connectionStringBuilder.UserID;
-dbCon.Password = connectionStringBuilder.Password;
 
-if (dbCon.IsConnect())
+if (dbCon.IsConnect(connectionString))
 {
-    dbCon.setSessionVariables();
+    Console.WriteLine("Connected to database successfully!");
+    //dbCon.setSessionVariables();
     // Get the current directory
     string currentDirectory = Environment.CurrentDirectory;
 
@@ -40,16 +36,11 @@ if (dbCon.IsConnect())
 
     //worldGenerator.populatePointsAndWorldPointsFromImage(parentDirectory, dbCon,config);
 
-    //worldGenerator.loadViewPointTableFromDB(dbCon);
-    //worldGenerator.renderViewPointsAsImage(parentDirectory + "\\Maps\\view-output.png", dbCon, config);
 
-    //MapProvinceCreate.assignRemainingUnallocatedPoints(dbCon, 1000, 1053);
 
-    //MapProvinceCreate.renderProvinces(dbCon, parentDirectory + "\\sf-continent.png", parentDirectory + "\\output-sf-continent-2.png");
-    //MapProvinceCreate.populateEdgesTable(dbCon);
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
     //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
-    //Map SingletonMap = Map.Instance;
+
     //HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
     //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 3060, 3604);
     //HeightMapGen.writeElevationsToDbPoints(dbCon);

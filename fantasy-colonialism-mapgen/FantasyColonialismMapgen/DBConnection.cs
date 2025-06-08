@@ -1,5 +1,6 @@
 ﻿using MySql.Data;
 using MySql.Data.MySqlClient;
+using Npgsql;
 using System.Text;
 
 namespace FantasyColonialismMapgen
@@ -9,13 +10,9 @@ namespace FantasyColonialismMapgen
         private DBConnection()
         {
         }
+       
 
-        public string Server { get; set; }
-        public string DatabaseName { get; set; }
-        public string UserName { get; set; }
-        public string Password { get; set; }
-
-        public MySqlConnection Connection { get; set; }
+        public NpgsqlDataSource dataSource { get; set; }
 
         private static DBConnection _instance = null;
         public static DBConnection Instance()
@@ -25,41 +22,47 @@ namespace FantasyColonialismMapgen
             return _instance;
         }
 
-        public bool IsConnect()
+        public bool IsConnect(string connectionString)
         {
-            if (Connection == null)
+            try
             {
-                if (String.IsNullOrEmpty(DatabaseName))
-                    return false;
-                string connstring = string.Format("Server={0}; database={1}; UID={2}; password={3}", Server, DatabaseName, UserName, Password);
-                Connection = new MySqlConnection(connstring);
-                Connection.Open();
-            }
+                if (dataSource == null)
+                {
+                    dataSource = NpgsqlDataSource.Create(connectionString);
+                }
 
-            return true;
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error connecting to database: {e.Message}");
+                return false;
+            }
         }
 
         public void Close()
         {
-            Connection.Close();
+            dataSource.Clear();
         }
 
+        /*
         public void setSessionVariables()
         {
-            string maxRecursionDepthQuery = "SET SESSION cte_max_recursion_depth = 1000000;";
+            string maxRecursionDepthQuery = "SET SESSION max_recursion_depth = 1000000;";
 
-            var sessionCmd = new MySqlCommand(maxRecursionDepthQuery, Connection);
+            var sessionCmd = new NpgsqlCommand(maxRecursionDepthQuery, dataSource);
 
             sessionCmd.ExecuteNonQuery();
-        }
+        }*/
 
         public void runStringNonQueryCommand(string command)
         {
-            MySqlCommand cmd = new MySqlCommand(command, Connection);
-            cmd.ExecuteNonQuery();
+            using var npgCommand = dataSource.CreateCommand(command);
+            npgCommand.ExecuteNonQuery();
+            dataSource.Clear();
         }
 
-        public void runStringNonQueryCommandBatch(string commandPrefix,string commandSuffix, List<string> commands, int batchSize,char joinChar, bool log)
+        public void runStringNonQueryCommandBatch(string commandPrefix, string commandSuffix, List<string> commands, int batchSize, char joinChar, bool log)
         {
             if (log)
             {
@@ -67,35 +70,111 @@ namespace FantasyColonialismMapgen
                 Console.WriteLine($"Total commands to process: {commands.Count}");
                 Console.WriteLine($"Batch size: {batchSize}");
             }
-            List<string> batchCommands = new List<string>();
+
+            using var batch = dataSource.CreateBatch();
             for (int i = 0; i < commands.Count; i++)
             {
-                batchCommands.Add(commands[i]);
+                batch.BatchCommands.Add(new NpgsqlBatchCommand(commandPrefix + commands[i] + commandSuffix + joinChar));
+                if ((i + 1) % batchSize == 0)
+                {
+                    if (batch.BatchCommands.Count > 0)
+                    {
+                        if (log)
+                        {
+                            Console.WriteLine($"Finished processing {i + 1} commands at {DateTime.UtcNow}");
+                        }
+                        batch.ExecuteNonQuery();
+                        batch.BatchCommands.Clear();
+                    }
+                }
+            }
+            if (batch.BatchCommands.Count > 0)
+            {
+                batch.ExecuteNonQuery();
+                batch.BatchCommands.Clear();
+            }
+            dataSource.Clear();
+        }
+
+
+        public void runStringNonQueryCommandBatchUnformatted(List<string> commands, int batchSize, bool log)
+        {
+            if (log)
+            {
+                Console.WriteLine($"Total commands to process: {commands.Count}");
+                Console.WriteLine($"Batch size: {batchSize}");
+            }
+
+            using var batch = dataSource.CreateBatch();
+            for (int i = 0; i < commands.Count; i++)
+            {
+                batch.BatchCommands.Add(new NpgsqlBatchCommand(commands[i]));
                 if (i % batchSize == 0)
                 {
-                    if (batchCommands.Count > 0)
+                    if (batch.BatchCommands.Count > 0)
                     {
                         if (log)
                         {
                             Console.WriteLine($"Finished processing {i} commands at {DateTime.UtcNow.ToString()}");
                         }
-                        StringBuilder batchCommandStringBuilder = new StringBuilder(commandPrefix);
-                        //Finish the insert statement
-                        batchCommandStringBuilder.Append(string.Join(joinChar, batchCommands));
-                        batchCommandStringBuilder.Append(commandSuffix);
-                        runStringNonQueryCommand(batchCommandStringBuilder.ToString());
-                        batchCommands.Clear();
-                        Console.WriteLine(batchCommands.Count);
+                        batch.ExecuteNonQuery();
+                        Console.WriteLine(batch.BatchCommands.Count);
+                        batch.BatchCommands.Clear();
+                        Console.WriteLine(batch.BatchCommands.Count);
                     }
                 }
             }
+            if (batch.BatchCommands.Count > 0)
+            {
+                batch.ExecuteNonQuery();
+                batch.BatchCommands.Clear();
+            }
+            dataSource.Clear();
+        }
 
+        public NpgsqlDataReader runQueryCommand(string command)
+        {
+            var npgCommand = dataSource.CreateCommand(command);
+            var reader = npgCommand.ExecuteReader();
+            return reader;
+        }
 
-            StringBuilder batchCommandStringBuilderFinal = new StringBuilder(commandPrefix);
-            //Finish the insert statement
-            batchCommandStringBuilderFinal.Append(string.Join(joinChar, batchCommands));
-            batchCommandStringBuilderFinal.Append(";");
-            runStringNonQueryCommand(batchCommandStringBuilderFinal.ToString());
+        public void runStringNonQueryCommandBatchInsert(string insertStatement, List<string> commands, int batchSize, bool log)
+        {
+            if (log)
+            {
+                Console.WriteLine($"Running batch command with prefix: {insertStatement}");
+                Console.WriteLine($"Total commands to process: {commands.Count}");
+                Console.WriteLine($"Batch size: {batchSize}");
+            }
+            
+            using var batch = dataSource.CreateBatch();
+            List<string> batchCommands = new List<string>();
+            for (int i = 0; i < commands.Count; i++)
+            {
+                if(i % batchSize == 0 && batchCommands.Count > 0)
+                {
+                    if (log)
+                    {
+                        Console.WriteLine($"Processing commands from {i - batchCommands.Count} to {i} at {DateTime.UtcNow}");
+                    }
+                    string batchStatement = insertStatement + batchCommands.Aggregate(new StringBuilder(), (sb, cmd) => sb.Append(cmd).Append(",")).ToString();
+                    runStringNonQueryCommand(batchStatement.TrimEnd(','));
+                    batchCommands.Clear();
+                }
+
+                batchCommands.Add(commands[i]);
+            }
+            if (batchCommands.Count > 0)
+            {
+                if (log)
+                {
+                    Console.WriteLine($"Processing remaining commands at {DateTime.UtcNow}");
+                }
+                string batchStatement = insertStatement + batchCommands.Aggregate(new StringBuilder(), (sb, cmd) => sb.Append(cmd).Append(",")).ToString();
+                runStringNonQueryCommand(batchStatement.TrimEnd(','));
+            }
+            dataSource.Clear();
         }
     }
 }

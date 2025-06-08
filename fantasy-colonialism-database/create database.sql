@@ -1,1 +1,3 @@
-CREATE DATABASE fantasy-colonialism-backend-dev;
+CREATE DATABASE fantasyColonialismDev01;
+
+CREATE SCHEMA map;

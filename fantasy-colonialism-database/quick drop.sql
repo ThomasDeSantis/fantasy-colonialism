@@ -1,3 +1,3 @@
-DROP TABLE Points;
+DROP TABLE "Points";
 
-DROP TABLE Provinces;
+DROP TABLE "Provinces";

@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "DatabaseConnection": "Server=SERVERHOST;Database=DATABASE;User Id=USER;Password=PASSWORD;"
+    "DatabaseConnection": "Server=SERVERHOST;Database=DATABASE;User Id=USER;Password=PASSWORD;SearchPath=map;"
   },
   "MapSettings": {
     "TopLatitude": "37.5",

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LibNoise.Primitive;
 using Microsoft.Extensions.Configuration;
 
 namespace FantasyColonialismMapgen

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
+using Npgsql;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
@@ -61,7 +62,7 @@ namespace FantasyColonialismMapgen
             //Check current max_allowed_packet
 
 
-            database.runStringNonQueryCommand("CALL `sp_TRUNCATE_POINTS`();");
+            database.runStringNonQueryCommand("CALL sp_TRUNCATE_POINTS();");
             Console.WriteLine($"Image processing began: {DateTime.UtcNow.ToString()}");
             int pointId = 0; //Used 
 
@@ -76,7 +77,7 @@ namespace FantasyColonialismMapgen
                         if (batchWorldPointInsertRow.Count > 0)
                         {
                             Console.WriteLine($"Finished processing world point {pointId} points.");
-                            StringBuilder batchWorldPointInsert = new StringBuilder("INSERT INTO WorldPoints (x,y,land) VALUES ");
+                            StringBuilder batchWorldPointInsert = new StringBuilder("INSERT INTO \"WorldPoints\" (x,y,land) VALUES ");
                             //Finish the insert statement
                             batchWorldPointInsert.Append(string.Join(",", batchWorldPointInsertRow));
                             batchWorldPointInsert.Append(";");
@@ -109,7 +110,7 @@ namespace FantasyColonialismMapgen
                 }
             }
 
-            StringBuilder batchWorldPointInsertFinal = new StringBuilder("INSERT INTO WorldPoints (x,y,land) VALUES ");
+            StringBuilder batchWorldPointInsertFinal = new StringBuilder("INSERT INTO \"WorldPoints\" (x,y,land) VALUES ");
             //Finish the insert statement
             batchWorldPointInsertFinal.Append(string.Join(",", batchWorldPointInsertRow));
             batchWorldPointInsertFinal.Append(";");
@@ -136,22 +137,19 @@ namespace FantasyColonialismMapgen
             }
 
             //Query the database for all land points
-            string query = "SELECT x, y, land FROM WorldPoints WHERE land = true;";
-            MySqlCommand cmd = new MySqlCommand(query, database.Connection);
-            using (MySqlDataReader reader = cmd.ExecuteReader())
+            string query = "SELECT x, y, land FROM \"WorldPoints\" WHERE land = true;";
+            NpgsqlDataReader reader = database.runQueryCommand(query);
+            while (reader.Read())
             {
-                while (reader.Read())
+                int x = reader.GetInt32(0);
+                int y = reader.GetInt32(1);
+                bool land = reader.GetBoolean(2);
+                if (land)
                 {
-                    int x = reader.GetInt32(0);
-                    int y = reader.GetInt32(1);
-                    bool land = reader.GetBoolean(2);
-                    if (land)
-                    {
-                        worldMap[y][x] = true;
-                    }
+                    worldMap[y][x] = true;
                 }
-                reader.Close();
             }
+            reader.Close();
 
             Image<Rgba32> output = new Image<Rgba32>(width, height);
 
@@ -182,18 +180,16 @@ namespace FantasyColonialismMapgen
             int pointHeight = 0;
 
             //Get width/height rather than using the config dimensions to ensure it is the truest representation of the table
-            string query = "SELECT MAX(x) - MIN(x) as width, MAX(y) - MIN(y) as height FROM Points;";
-            MySqlCommand cmd = new MySqlCommand(query, database.Connection);
-            using(MySqlDataReader reader = cmd.ExecuteReader())
-            {
-                if (reader.Read())
-                {
-                    pointWidth = reader.GetInt32(0)+1;
-                    pointHeight = reader.GetInt32(1)+1;
-                }
+            string query = "SELECT MAX(x) - MIN(x) as width, MAX(y) - MIN(y) as height FROM \"Points\";";
+            NpgsqlDataReader reader = database.runQueryCommand(query);
 
-                reader.Close();
+            if (reader.Read())
+            {
+                pointWidth = reader.GetInt32(0) + 1;
+                pointHeight = reader.GetInt32(1) + 1;
             }
+
+            reader.Close();
 
             Console.WriteLine("Height: " + pointHeight + " Width: " + pointWidth);
 
@@ -209,22 +205,19 @@ namespace FantasyColonialismMapgen
             }
 
             //Query the database for all land points
-            string queryPoints = "SELECT x, y, land FROM Points WHERE land = true;";
-            MySqlCommand cmdPoints = new MySqlCommand(queryPoints, database.Connection);
-            using (MySqlDataReader reader = cmdPoints.ExecuteReader())
+            string queryPoints = "SELECT x, y, land FROM \"Points\" WHERE land = true;";
+            NpgsqlDataReader readerPoints = database.runQueryCommand(queryPoints);
+            while (readerPoints.Read())
             {
-                while (reader.Read())
+                int x = readerPoints.GetInt32(0) - mainViewTopLeftX;
+                int y = readerPoints.GetInt32(1) - mainViewTopLeftY;
+                bool land = readerPoints.GetBoolean(2);
+                if (land)
                 {
-                    int x = reader.GetInt32(0) - mainViewTopLeftX;
-                    int y = reader.GetInt32(1) - mainViewTopLeftY;
-                    bool land = reader.GetBoolean(2);
-                    if (land)
-                    {
-                        pointMap[y][x] = true;
-                    }
+                    pointMap[y][x] = true;
                 }
-                reader.Close();
             }
+            readerPoints.Close();
 
             Image<Rgba32> output = new Image<Rgba32>(pointWidth, pointHeight);
 
@@ -254,26 +247,24 @@ namespace FantasyColonialismMapgen
 
             //Query the database for all points in the view window
             //This is used to populate the points in the image.
-            string query = $"SELECT x, y,id, land FROM WorldPoints WHERE x >= {mainViewTopLeftX} AND x < {mainViewTopLeftX + mainViewWidth} AND y >= {mainViewTopLeftY} AND y < {mainViewTopLeftY + mainViewHeight};";
-            MySqlCommand cmd = new MySqlCommand(query, database.Connection);
-
+            string query = $"SELECT x, y,id, land FROM \"WorldPoints\" WHERE x >= {mainViewTopLeftX} AND x < {mainViewTopLeftX + mainViewWidth} AND y >= {mainViewTopLeftY} AND y < {mainViewTopLeftY + mainViewHeight};";
+            
             List<(int,int,int,bool)> points = new List<(int, int,int, bool)>();
-            using (MySqlDataReader reader = cmd.ExecuteReader())
-            {
-                while (reader.Read())
+            NpgsqlDataReader reader = database.runQueryCommand(query);
+
+            while(reader.Read())
                 {
-                    int x = reader.GetInt32(0);
-                    int y = reader.GetInt32(1);
-                    int id = reader.GetInt32(2);
-                    bool land = reader.GetBoolean(3);
-                    points.Add((x, y,id, land));
-                    //batchViewPointInsertRow.Add(string.Format("({0},{1},{2})", MySqlHelper.EscapeString(x.ToString()), MySqlHelper.EscapeString(y.ToString()), land));
-                }
+                int x = reader.GetInt32(0);
+                int y = reader.GetInt32(1);
+                int id = reader.GetInt32(2);
+                bool land = reader.GetBoolean(3);
+                points.Add((x, y, id, land));
+                //batchViewPointInsertRow.Add(string.Format("({0},{1},{2})", MySqlHelper.EscapeString(x.ToString()), MySqlHelper.EscapeString(y.ToString()), land));
             }
 
 
             //This wil be used to load in the view points
-            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO Points (x,y,worldPointId,land,waterSalinity) VALUES ");
+            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ");
             //This will hold the individual insert statements for the points to be inserted into the database.
             List<string> batchViewPointInsertRow = new List<string>();
 
@@ -295,11 +286,11 @@ namespace FantasyColonialismMapgen
                     //Insert all of the points into the DB
                     database.runStringNonQueryCommand(batchViewPointInsert.ToString());
                     batchViewPointInsert.Clear();
-                    batchViewPointInsert.Append("INSERT INTO Points (x,y,worldPointId,land,waterSalinity) VALUES ");
+                    batchViewPointInsert.Append("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ");
                     batchViewPointInsertRow.Clear();
                 }*/
             }
-            database.runStringNonQueryCommandBatch("INSERT INTO Points (x,y,worldPointId,land,waterSalinity) VALUES ", ";", batchViewPointInsertRow, 20000, ',', true);
+            database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
         }
     }
 }

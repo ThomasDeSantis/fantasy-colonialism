@@ -4,16 +4,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using System.Xml;
 
 namespace FantasyColonialismMapgen
 {
+    //Deprecated until fixed for postgres
+    /*
     class SVGRenderer
     {
         private static string renderResetEdgeSproc = "CALL `sp_RENDER_RESET_EDGE`();";
         private static string consumeEdgeSproc = "CALL `sp_RENDER_CONSUME_EDGE`(@x_input,@y_input, @pid_input, @x_output, @y_output);";
-        private static string startingPointQuery = "SELECT DISTINCT x, y FROM renderNodes WHERE provinceId = @provinceId LIMIT 1;";
         private static string getProvinceCount = "SELECT DISTINCT provinceId FROM renderNodes;";
         private static string getConsumeSprocResults = "SELECT @x_output, @y_output;";
         public static void renderEdges(DBConnection database, string outputPath)
@@ -57,8 +58,8 @@ namespace FantasyColonialismMapgen
         private static List<int> getListOfRenderProvinces(DBConnection database)
         {
             List<int> provinces = new List<int>();
-            var cmd = new MySqlCommand(getProvinceCount, database.Connection);
-            var rdr = cmd.ExecuteReader();
+            var rdr = database.runQueryCommand(getProvinceCount);
+
             while (rdr.Read())
             {
                 provinces.Add(rdr.GetInt32(0));
@@ -74,14 +75,13 @@ namespace FantasyColonialismMapgen
         //provinceId is the id of the province to get the points from
         private static SvgPointCollection getDistinctProvinceRenderPoints(DBConnection database, int provinceId)
         {
+            string startingPointQuery = $"SELECT DISTINCT x, y FROM renderNodes WHERE provinceId = {provinceId} LIMIT 1;";
             SvgPointCollection points = new SvgPointCollection();
-            var renderNodeCmd = new MySqlCommand(startingPointQuery, database.Connection);
-            renderNodeCmd.Parameters.AddWithValue("@provinceId", provinceId);
             (decimal, decimal) currentPoint = (-1, -1);
 
 
             //Get a point to start rendering the province from
-            var rdr = renderNodeCmd.ExecuteReader();
+            NpgsqlDataReader rdr = database.runQueryCommand(startingPointQuery);
             while (rdr.Read())
             {
                 currentPoint = (rdr.GetDecimal(0), rdr.GetDecimal(1));
@@ -89,7 +89,7 @@ namespace FantasyColonialismMapgen
             rdr.Close();
 
 
-            var consumeEdgeCmd = new MySqlCommand("sp_RENDER_CONSUME_EDGE", database.Connection);
+            var consumeEdgeCmd = new MySqlCommand("sp_RENDER_CONSUME_EDGE", database.dataSource);
             consumeEdgeCmd.CommandType = System.Data.CommandType.StoredProcedure;
 
             //Add a point collection that will be used to store the first group of borders
@@ -111,17 +111,7 @@ namespace FantasyColonialismMapgen
 
                 if (consumeEdgeCmd.Parameters["?x_output"].Value != System.DBNull.Value)
                 {
-                    currentPoint = (Convert.ToDecimal(consumeEdgeCmd.Parameters["?x_output"].Value), Convert.ToDecimal(consumeEdgeCmd.Parameters["?y_output"].Value));/*
-                    if(Convert.ToInt32(consumeEdgeCmd.Parameters["?disjointed"].Value) == 0)
-                    {
-                        borderEdgeCollection[borderEdgeCollection.Count - 1].Add(new SvgUnit((float)currentPoint.Item1) * 5);
-                        borderEdgeCollection[borderEdgeCollection.Count - 1].Add(new SvgUnit((float)currentPoint.Item2) * 5);
-                    }
-                    else
-                    {
-                        borderEdgeCollection.Add(new SvgPointCollection());
-                    }*/
-                }
+                    currentPoint = (Convert.ToDecimal(consumeEdgeCmd.Parameters["?x_output"].Value), Convert.ToDecimal(consumeEdgeCmd.Parameters["?y_output"].Value));
                 else
                 {
                     currentPoint = ((-1, -1));
@@ -147,7 +137,7 @@ namespace FantasyColonialismMapgen
 
         private static void resetRenderConsumptions(DBConnection dBConnection)
         {
-            var cmd = new MySqlCommand(renderResetEdgeSproc, dBConnection.Connection);
+            var cmd = new MySqlCommand(renderResetEdgeSproc, dBConnection.dataSource);
             cmd.ExecuteNonQuery();
         }
 
@@ -194,5 +184,5 @@ namespace FantasyColonialismMapgen
 
             svgDoc.Save(outputPath);
         }
-    }
+    }*/
 }

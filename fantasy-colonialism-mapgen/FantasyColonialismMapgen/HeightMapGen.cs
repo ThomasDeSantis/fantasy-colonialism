@@ -9,9 +9,8 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using MySql.Data.MySqlClient;
 using Mysqlx.Crud;
-using LibNoise;
-using LibNoise.Primitive;
-using LibNoise.Filter;
+using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal;
 
 namespace FantasyColonialismMapgen
 {
@@ -19,11 +18,11 @@ namespace FantasyColonialismMapgen
     {
         public static void generateHeightMap(DBConnection db,IConfiguration config, string parentDirectory, string roughnessMap)
         {
-            /*
+            
             Console.WriteLine("Begin setting coastal provinces: " + DateTime.UtcNow.ToString());
             setCoastalPoints(db);
             Console.WriteLine("End setting coastal provinces: " + DateTime.UtcNow.ToString());
-            */
+            
             
 
             roughnessColorMap[] roughnessColorMaps = loadRoughnessColorMaps(config);
@@ -64,8 +63,12 @@ namespace FantasyColonialismMapgen
             Console.WriteLine(max);
             renderHeightmap(heightMap, parentDirectory + "\\Maps\\continent-heightmap-render.png", height, width,max,min);
 
+            Console.WriteLine("Begin writing height: " + DateTime.UtcNow.ToString());
             writeElevationsToDbWorldPoints(db, heightMap);
+            Console.WriteLine("Finished writing height: " + DateTime.UtcNow.ToString());
+            Console.WriteLine("Begin writing points to points table: " + DateTime.UtcNow.ToString());
             writeElevationsToDbPoints(db);
+            Console.WriteLine("Finished writing points to points table: " + DateTime.UtcNow.ToString());
             //smoothenHeightMap(heightMap, width, height);
             //renderHeightmap(heightMap, parentDirectory + "\\sf-continent-heightmap-render-s1.png", height, width, max);
             //int min = getMinHeight(roughnessColorMaps);
@@ -78,9 +81,8 @@ namespace FantasyColonialismMapgen
             var points = new Dictionary<(int x, int y), (bool,int)>();
 
             // Query all points from the database
-            string query = "SELECT x, y, land, id FROM WorldPoints;";
-            var command = new MySqlCommand(query, db.Connection);
-            MySqlDataReader reader = command.ExecuteReader();
+            string query = "SELECT x, y, land, id FROM \"WorldPoints\";";
+            NpgsqlDataReader reader = db.runQueryCommand(query);
 
             bool first = true;
 
@@ -91,7 +93,7 @@ namespace FantasyColonialismMapgen
                 int y = reader.GetInt32(1);
                 bool isLand = reader.GetBoolean(2);
                 int id = reader.GetInt32(3);
-                points[(x, y)] = (isLand,id);
+                points[(x, y)] = (isLand, id);
             }
             reader.Close();
 
@@ -109,7 +111,7 @@ namespace FantasyColonialismMapgen
                     {
                         if (points.ContainsKey(neighbor) && !points[neighbor].Item1)
                         {
-                            batchCoastalUpdateRow.Add(string.Format("UPDATE WorldPoints SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
+                            batchCoastalUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
                             break;
                         }
                     }
@@ -121,9 +123,8 @@ namespace FantasyColonialismMapgen
 
         public static void renderCoastline(DBConnection db, string coastLineMapPath, int height, int width)
         {
-            string query = "SELECT x, y, coastal, land FROM WorldPoints";
-            var command = new MySqlCommand(query, db.Connection);
-            MySqlDataReader reader = command.ExecuteReader();
+            string query = "SELECT x, y, coastal, land FROM \"WorldPoints\"";
+            NpgsqlDataReader reader = db.runQueryCommand(query);
             // Create a new image with the specified dimensions
             using (SixLabors.ImageSharp.Image<Rgba32> image = new SixLabors.ImageSharp.Image<Rgba32>(width, height))
             {
@@ -184,18 +185,17 @@ namespace FantasyColonialismMapgen
             string getAllPointsQuery = "";
             if (worldPoints)
             {
-                getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM WorldPoints ORDER BY x, y;";
+                getAllPointsQuery = "SELECT x, y, land, height, coastal, id FROM \"WorldPoints\" ORDER BY x, y;";
             }
             else
             {
-                getAllPointsQuery = "SELECT x, y, land, height, 0, id FROM Points ORDER BY x, y;";
+                getAllPointsQuery = "SELECT x, y, land, height, false, id FROM \"Points\" ORDER BY x, y;";
             }
 
             int widthOffset = config.GetValue<int>("ImageSettings:MapTopLeftWidth");
             int heightOffset = config.GetValue<int>("ImageSettings:MapTopLeftHeight");
 
-            var queryCmd = new MySqlCommand(getAllPointsQuery, db.Connection);
-            MySqlDataReader rdr = queryCmd.ExecuteReader();
+            NpgsqlDataReader rdr = db.runQueryCommand(getAllPointsQuery);
 
             while (rdr.Read())
             {
@@ -578,7 +578,7 @@ namespace FantasyColonialismMapgen
                 {
                     if (!heightMap[y][x].water)
                     {
-                        batchHeightUpdateRow.Add(string.Format("UPDATE WorldPoints SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
+                        batchHeightUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
                     }
                 }
             }
@@ -591,15 +591,15 @@ namespace FantasyColonialismMapgen
         //Is redundant but the intent is for the points table to be queried much more often than world points
         public static void writeElevationsToDbPoints(DBConnection db)
         {
-            string query = "SELECT p1.id, p2.height FROM Points p1 JOIN WorldPoints p2 on p1.worldPointId = p2.id;";
-            var cmd = new MySqlCommand(query, db.Connection);
-            MySqlDataReader rdr = cmd.ExecuteReader();
+            string query = "SELECT p1.id, p2.height FROM \"Points\" p1 JOIN \"WorldPoints\" p2 on p1.worldPointId = p2.id;";
+            NpgsqlDataReader rdr = db.runQueryCommand(query);
+
             List<string> batchHeightUpdateRow = new List<string>();
             while (rdr.Read())
             {
                 int id = rdr.GetInt32(0);
                 int height = rdr.GetInt32(1);
-                batchHeightUpdateRow.Add(string.Format("UPDATE Points SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(height.ToString()), MySqlHelper.EscapeString(id.ToString())));
+                batchHeightUpdateRow.Add(string.Format("UPDATE \"Points\" SET height = {0} WHERE id = {1}", height.ToString(), id.ToString()));
             }
             rdr.Close();
 

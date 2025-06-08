@@ -19,6 +19,7 @@ namespace FantasyColonialismMapgen
 {
     class MapProvinceCreate
     {
+
         enum gridOrientation
         {
             topLeft,
@@ -131,7 +132,7 @@ namespace FantasyColonialismMapgen
             Rgba32 oceanColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapOceanPoint"));
             // Query all world points
             string query = "SELECT x, y, land FROM WorldPoints;";
-            var cmd = new MySqlCommand(query, database.Connection);
+            var cmd = new MySqlCommand(query, database.dataSource);
             int maxX = 0, maxY = 0;
             // Load the height map from the database
             bool[][] worldLand = new bool[height][];
@@ -199,7 +200,7 @@ namespace FantasyColonialismMapgen
             Rgba32 lakeColor = Rgba32.ParseHex(config.GetValue<string>("MapgenStrings:BaseMapLakePoint"));
 
 
-            var pointCmd = new MySqlCommand(pointInsertQuery, database.Connection);
+            var pointCmd = new MySqlCommand(pointInsertQuery, database.dataSource);
             using (SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(inputPath))
             {
                 height = image.Height;
@@ -283,7 +284,7 @@ namespace FantasyColonialismMapgen
             int pointsRemaining;
             do
             {
-                var cmd = new MySqlCommand(getUnallocatedPoints, database.Connection);
+                var cmd = new MySqlCommand(getUnallocatedPoints, database.dataSource);
                 cmd.Parameters.AddWithValue("@x", width - 1);
                 cmd.Parameters.AddWithValue("@y", height - 1);
                 MySqlDataReader rdr = cmd.ExecuteReader();
@@ -326,7 +327,7 @@ namespace FantasyColonialismMapgen
                 //Do a depth first search
                 //At this point all white points will be divided into provinces and pushed into the DB
 
-                var provinceCmd = new MySqlCommand(provinceInsertQuery, database.Connection);
+                var provinceCmd = new MySqlCommand(provinceInsertQuery, database.dataSource);
                 List<string> batchWhitePointInsertRows = new List<string>();
                 foreach ((int, int) point in whitePoints)
                 {
@@ -478,7 +479,7 @@ namespace FantasyColonialismMapgen
         {
             string query = "SELECT x,y,waterSalinity,type,provinceId FROM Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) ORDER BY RAND() LIMIT 1;";
 
-            var cmd = new MySqlCommand(query, database.Connection);
+            var cmd = new MySqlCommand(query, database.dataSource);
             cmd.Parameters.AddWithValue("@x", point.Item1);
             cmd.Parameters.AddWithValue("@y", point.Item2);
 
@@ -505,7 +506,7 @@ namespace FantasyColonialismMapgen
             switch (type)
             {
                 case "ocean":
-                    var oceanPointCmd = new MySqlCommand(oceanPointInsertQuery, database.Connection);
+                    var oceanPointCmd = new MySqlCommand(oceanPointInsertQuery, database.dataSource);
                     oceanPointCmd.Parameters.AddWithValue("@x", point.Item1);
                     oceanPointCmd.Parameters.AddWithValue("@y", point.Item2);
                     oceanPointCmd.ExecuteNonQuery();
@@ -513,7 +514,7 @@ namespace FantasyColonialismMapgen
                     return true;
                     break;
                 case "land":
-                    var pointCmd = new MySqlCommand(pointInsertQuery, database.Connection);
+                    var pointCmd = new MySqlCommand(pointInsertQuery, database.dataSource);
                     pointCmd.Parameters.AddWithValue("@x", point.Item1);
                     pointCmd.Parameters.AddWithValue("@y", point.Item2);
                     pointCmd.Parameters.AddWithValue("@provinceId", provinceId);
@@ -521,7 +522,7 @@ namespace FantasyColonialismMapgen
                     pointCmd.Parameters.Clear();
                     return true;
                 case "lake":
-                    var lakePointCmd = new MySqlCommand(lakePointInsertQuery, database.Connection);
+                    var lakePointCmd = new MySqlCommand(lakePointInsertQuery, database.dataSource);
                     lakePointCmd.Parameters.AddWithValue("@x", point.Item1);
                     lakePointCmd.Parameters.AddWithValue("@y", point.Item2);
                     lakePointCmd.ExecuteNonQuery();
@@ -538,7 +539,7 @@ namespace FantasyColonialismMapgen
 
             Console.WriteLine("Begin processing edges: " + DateTime.UtcNow.ToString());
             // Truncate the renderEdges table
-            var truncateCmd = new MySqlCommand(truncateRenderEdges, database.Connection);
+            var truncateCmd = new MySqlCommand(truncateRenderEdges, database.dataSource);
             truncateCmd.ExecuteNonQuery();
 
             List<int> provinces = Province.getListOfProvinces(database);
@@ -548,7 +549,7 @@ namespace FantasyColonialismMapgen
 
             for(int i = 0; i < provinces.Count; i++)
             {
-                var cmd = new MySqlCommand(borderQuery, database.Connection);
+                var cmd = new MySqlCommand(borderQuery, database.dataSource);
                 cmd.Parameters.AddWithValue("@provinceId", provinces[i]);
                 MySqlDataReader rdr = cmd.ExecuteReader();
 
@@ -561,7 +562,7 @@ namespace FantasyColonialismMapgen
                 }
                 rdr.Close();
 
-                var allPointsCmd = new MySqlCommand(provinceQuery, database.Connection);
+                var allPointsCmd = new MySqlCommand(provinceQuery, database.dataSource);
                 allPointsCmd.Parameters.AddWithValue("@provinceId", provinces[i]);
                 rdr = allPointsCmd.ExecuteReader();
 
@@ -620,7 +621,7 @@ namespace FantasyColonialismMapgen
         private static void writeEdgeToDB((decimal, decimal) p1, (decimal, decimal) p2, int provinceId, DBConnection database)
         {
 
-            var edgeCmd = new MySqlCommand(edgeInsertQuery, database.Connection);
+            var edgeCmd = new MySqlCommand(edgeInsertQuery, database.dataSource);
             edgeCmd.Parameters.AddWithValue("@x1", p1.Item1);
             edgeCmd.Parameters.AddWithValue("@y1", p1.Item2);
 
