@@ -55,6 +55,12 @@ namespace FantasyColonialismMapgen
             Console.WriteLine($"Begin rendering view points as image: {DateTime.UtcNow.ToString()}");
             renderViewPointsAsImage(parentDirectory + "\\Maps\\view-output.png", database, config);
             Console.WriteLine($"Finished rendering view points as image: {DateTime.UtcNow.ToString()}");
+            Console.WriteLine($"Begin populating latitude and longitude for world points: {DateTime.UtcNow.ToString()}");
+            populateLatitudeLongitudeWorldPoints(database, config);
+            Console.WriteLine($"Finished populating latitude and longitude for world points: {DateTime.UtcNow.ToString()}");
+            Console.WriteLine($"Begin populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
+            populateLatitudeLongitudePoints(database);
+            Console.WriteLine($"Finished populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
         }
 
         private void processImageIntoWorldPoints(string inputPath, DBConnection database, IConfiguration config)
@@ -291,6 +297,83 @@ namespace FantasyColonialismMapgen
                 }*/
             }
             database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
+        }
+
+        //Populate the latitude longitude for a mercator projection
+        //Latitude is within the range of -85.051 to +85.051
+        //Longitude is -180.0 to +180.0
+        public void populateLatitudeLongitudeWorldPoints(DBConnection database,IConfiguration config)
+        {
+            //Will be used for calculating mercator coords
+            double maxX = config.GetValue<double>("ImageSettings:WorldWidth") - 1;
+            double maxY = config.GetValue<double>("ImageSettings:WorldHeight") - 1;
+
+            string query = "SELECT id, x, y FROM \"WorldPoints\" order by id asc;";
+            NpgsqlDataReader reader = database.runQueryCommand(query);
+            List<string> batchUpdateCommands = new List<string>();
+            Dictionary<int,double> yToLatitude = new Dictionary<int, double>();
+            while (reader.Read())
+            {
+                int id = reader.GetInt32(0);
+                int x = reader.GetInt32(1);
+                int y = reader.GetInt32(2);
+                //Calculate latitude and longitude based on the x and y coordinates, given the map is a mercator projection
+                double latitude;
+                if(yToLatitude.ContainsKey(y))
+                {
+                    //If we have already calculated the latitude for this y coordinate, use it
+                    latitude = yToLatitude[y];
+                }
+                else
+                {
+                    //Calculate the latitude for this y coordinate
+                    double yPi = ((double)y * Math.PI * 2.0) / maxY; // Convert y to a range of 0 to 2*PI
+                    yPi -= Math.PI; // Shift to range of -PI to PI
+                    yPi *= -1.0; // Invert the y coordinate for mercator projection
+                    latitude = GetLatitude(yPi); // Example conversion factor
+                    yToLatitude[y] = latitude;
+                }
+                double longitude = ((360.0 * x)/maxX) - 180.0; // Example conversion factor
+                //Prepare the update command
+                batchUpdateCommands.Add($"UPDATE \"WorldPoints\" SET latitude = {latitude}, longitude = {longitude} WHERE id = {id}");
+            }
+            reader.Close();
+            //Run the batch update commands
+            if (batchUpdateCommands.Count > 0)
+            {
+                database.runStringNonQueryCommandBatch("", "", batchUpdateCommands, 2500, ';', true);
+            }
+        }
+
+        //https://stackoverflow.com/questions/1166059/how-can-i-get-latitude-longitude-from-x-y-on-a-mercator-map-jpeg
+        //http://en.wikipedia.org/wiki/Gudermannian_function
+        //Returns the Latitude in degrees for a given Y.
+        //Y is in the range of +PI to -PI.
+        public static double GetLatitude(double y)
+        {
+            //57.2958 is the conversion factor from radians to degrees
+            return Math.Atan(Math.Sinh(y)) * 57.2958;
+        }
+
+        public void populateLatitudeLongitudePoints(DBConnection database)
+        {
+            string query = "SELECT p1.id,p2.latitude,p2.longitude from \"Points\" p1 JOIN \"WorldPoints\" p2 on p2.id = p1.worldpointid;";
+            NpgsqlDataReader reader = database.runQueryCommand(query);
+            List<string> batchUpdateCommands = new List<string>();
+            while (reader.Read())
+            {
+                int id = reader.GetInt32(0);
+                double latitude = reader.GetDouble(1);
+                double longitude = reader.GetDouble(2);
+                //Prepare the update command
+                batchUpdateCommands.Add($"UPDATE \"Points\" SET latitude = {latitude}, longitude = {longitude} WHERE id = {id}");
+            }
+            reader.Close();
+            //Run the batch update commands
+            if (batchUpdateCommands.Count > 0)
+            {
+                database.runStringNonQueryCommandBatch("", "", batchUpdateCommands, 2500, ';', true);
+            }
         }
     }
 }
