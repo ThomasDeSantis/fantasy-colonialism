@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using SixLabors.ImageSharp;
@@ -59,7 +60,7 @@ namespace FantasyColonialismMapgen
             populateLatitudeLongitudeWorldPoints(database, config);
             Console.WriteLine($"Finished populating latitude and longitude for world points: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
-            populateLatitudeLongitudePoints(database);
+            populateLatitudeLongitudeDimensionsPoints(database,config);
             Console.WriteLine($"Finished populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
         }
 
@@ -330,10 +331,10 @@ namespace FantasyColonialismMapgen
                     double yPi = ((double)y * Math.PI * 2.0) / maxY; // Convert y to a range of 0 to 2*PI
                     yPi -= Math.PI; // Shift to range of -PI to PI
                     yPi *= -1.0; // Invert the y coordinate for mercator projection
-                    latitude = GetLatitude(yPi); // Example conversion factor
+                    latitude = GetLatitude(yPi); 
                     yToLatitude[y] = latitude;
                 }
-                double longitude = ((360.0 * x)/maxX) - 180.0; // Example conversion factor
+                double longitude = ((360.0 * x)/maxX) - 180.0; 
                 //Prepare the update command
                 batchUpdateCommands.Add($"UPDATE \"WorldPoints\" SET latitude = {latitude}, longitude = {longitude} WHERE id = {id}");
             }
@@ -355,18 +356,72 @@ namespace FantasyColonialismMapgen
             return Math.Atan(Math.Sinh(y)) * 57.2958;
         }
 
-        public void populateLatitudeLongitudePoints(DBConnection database)
+        public void populateLatitudeLongitudeDimensionsPoints(DBConnection database, IConfiguration config)
         {
-            string query = "SELECT p1.id,p2.latitude,p2.longitude from \"Points\" p1 JOIN \"WorldPoints\" p2 on p2.id = p1.worldpointid;";
+            string query = "SELECT p1.id,p2.latitude,p2.longitude, p1.y from \"Points\" p1 JOIN \"WorldPoints\" p2 on p2.id = p1.worldpointid;";
+            int maxY = config.GetValue<int>("ImageSettings:WorldHeight") - 1;
+            int maxX = config.GetValue<int>("ImageSettings:WorldWidth") - 1;
+            int metersLength = 12756000 / maxX; //As this is a mercator projection, each point will have a constant width. 12767000 is the diameter of the earth, and when we divide by maxX we will get the exact width of each point in meters.
             NpgsqlDataReader reader = database.runQueryCommand(query);
             List<string> batchUpdateCommands = new List<string>();
+            Dictionary<int, double> yToLatitudeRateOfChange = new Dictionary<int, double>();
             while (reader.Read())
             {
                 int id = reader.GetInt32(0);
                 double latitude = reader.GetDouble(1);
                 double longitude = reader.GetDouble(2);
+                int y = reader.GetInt32(3);
+
+
+                double latROC = 0;
+                if (!yToLatitudeRateOfChange.ContainsKey(y))
+                {
+                    double latMinus1 = -91;
+                    double latPlus1 = -91;//-361 indicates failure
+
+                    if (y - 1 >= 0)
+                    {
+                        double yPi = ((double)(y - 1) * Math.PI * 2.0) / maxY;
+                        yPi -= Math.PI; // Shift to range of -PI to PI
+                        yPi *= -1.0; // Invert the y coordinate for mercator projection
+                        latMinus1 = GetLatitude(yPi);
+                    }
+                    if (y + 1 <= maxY)
+                    {
+                        double yPi = ((double)(y + 1) * Math.PI * 2.0) / maxY;
+                        yPi -= Math.PI; // Shift to range of -PI to PI
+                        yPi *= -1.0; // Invert the y coordinate for mercator projection
+                        latPlus1 = GetLatitude(yPi);
+                    }
+
+                    double latROC1 = 0;
+                    double latROC2 = 0;
+                    if (latMinus1 != -91 && latPlus1 != -91)
+                    {
+                        latROC1 = Math.Abs(Math.Abs(latitude) - Math.Abs(latMinus1));
+                        latROC2 = Math.Abs(Math.Abs(latitude) - Math.Abs(latPlus1));
+                        latROC = (latROC1 + latROC2) / 2.0;
+                    }
+                    else if (latMinus1 != -91 && latPlus1 == -91)
+                    {
+                        latROC = Math.Abs(Math.Abs(latitude) - Math.Abs(latMinus1));
+                    }
+                    else if (latPlus1 != -91 && latMinus1 == -91)
+                    {
+                        latROC = Math.Abs(Math.Abs(latitude) - Math.Abs(latPlus1));
+                    }
+                    yToLatitudeRateOfChange[y] = latROC;
+                }
+                else
+                {
+                    //If we have already calculated the latitude rate of change for this y coordinate, use it
+                    latROC = yToLatitudeRateOfChange[y];
+                }
+
+                int metersWidth = (int)((latROC * 12756000) / 180); //Calculate the width of the point in meters based on the latitude rate of change. 12756000 is the diameter of the earth, and when we divide by 180 we will get the exact width of each point in meters.
+
                 //Prepare the update command
-                batchUpdateCommands.Add($"UPDATE \"Points\" SET latitude = {latitude}, longitude = {longitude} WHERE id = {id}");
+                batchUpdateCommands.Add($"UPDATE \"Points\" SET latitude = {latitude}, longitude = {longitude}, length = {metersLength}, width = {metersWidth}, area = {metersLength * metersWidth} WHERE id = {id}");
             }
             reader.Close();
             //Run the batch update commands
@@ -375,5 +430,6 @@ namespace FantasyColonialismMapgen
                 database.runStringNonQueryCommandBatch("", "", batchUpdateCommands, 2500, ';', true);
             }
         }
+
     }
 }

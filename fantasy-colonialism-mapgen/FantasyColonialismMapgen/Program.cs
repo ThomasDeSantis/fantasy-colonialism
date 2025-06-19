@@ -45,7 +45,7 @@ if (dbCon.IsConnect(connectionString))
     //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 3060, 3604);
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
     //worldGenerator.populateLatitudeLongitude(dbCon, config);
-    worldGenerator.populateLatitudeLongitudePoints(dbCon);
+    worldGenerator.populateLatitudeLongitudeDimensionsPoints(dbCon,config);
     //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png",config);
 
     dbCon.Close();
