@@ -29,7 +29,10 @@ CREATE TABLE "Points" (
       longitude decimal (6,3) NULL, -- Longitude in degrees, -180 to 180. Redudancy with world points for purposes of not having to join to retrieve the field.
       width numeric NULL, -- Width (N/S) of the point in meters.
       length numeric NULL, -- Length (E/W) of the point in meters.
-      area numeric NULL -- Area of the point in square meters.
+      area numeric NULL, -- Area of the point in square meters.
+      summerSolsticeAverageTemperature decimal(3, 1) NULL, -- Average temperature in degrees Celsius during the summer solstice.
+      winterSolsticeAverageTemperature decimal(3, 1) NULL, -- Average temperature in degrees Celsius during the winter solstice.
+      averageRainfall numeric NULL -- Average yearly rainfall in millimeters.
 );
 
 -- A province is a collection of contiguous points.

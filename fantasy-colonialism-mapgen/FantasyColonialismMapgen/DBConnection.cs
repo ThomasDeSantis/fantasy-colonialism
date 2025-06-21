@@ -10,7 +10,7 @@ namespace FantasyColonialismMapgen
         private DBConnection()
         {
         }
-       
+
 
         public NpgsqlDataSource dataSource { get; set; }
 
@@ -147,12 +147,12 @@ namespace FantasyColonialismMapgen
                 Console.WriteLine($"Total commands to process: {commands.Count}");
                 Console.WriteLine($"Batch size: {batchSize}");
             }
-            
+
             using var batch = dataSource.CreateBatch();
             List<string> batchCommands = new List<string>();
             for (int i = 0; i < commands.Count; i++)
             {
-                if(i % batchSize == 0 && batchCommands.Count > 0)
+                if (i % batchSize == 0 && batchCommands.Count > 0)
                 {
                     if (log)
                     {
@@ -175,6 +175,25 @@ namespace FantasyColonialismMapgen
                 runStringNonQueryCommand(batchStatement.TrimEnd(','));
             }
             dataSource.Clear();
+        }
+
+        //Returns a one line int from a command
+        public int getIntFromQuery(string command)
+        {
+            using var cmd = dataSource.CreateCommand(command);
+            using var reader = cmd.ExecuteReader();
+            int val;
+            if (reader.Read())
+            {
+                val = reader.GetInt32(0);
+            }
+            else
+            {
+                throw new Exception("No results returned from query.");
+            }
+
+            reader.Close();
+            return val;
         }
     }
 }
