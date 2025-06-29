@@ -51,7 +51,7 @@ namespace FantasyColonialismMapgen
             renderWorldPointsAsImage(parentDirectory+"\\Maps\\world-output.png", database, config);
             Console.WriteLine($"Finished rendering world map points: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin loading view points from DB: {DateTime.UtcNow.ToString()}");
-            loadViewPointTableFromDB(database);
+            loadViewPointTableFromDB(database,config);
             Console.WriteLine($"Finished loading view points from DB: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin rendering view points as image: {DateTime.UtcNow.ToString()}");
             renderViewPointsAsImage(parentDirectory + "\\Maps\\view-output.png", database, config);
@@ -62,6 +62,9 @@ namespace FantasyColonialismMapgen
             Console.WriteLine($"Begin populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
             populateLatitudeLongitudeDimensionsPoints(database,config);
             Console.WriteLine($"Finished populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
+            Console.WriteLine($"Begin assigning distance to coast for points: {DateTime.UtcNow.ToString()}");
+            assignDistanceToCoast(database, config);
+            Console.WriteLine($"Finished assigning distance to coast for points: {DateTime.UtcNow.ToString()}");
         }
 
         private void processImageIntoWorldPoints(string inputPath, DBConnection database, IConfiguration config)
@@ -248,7 +251,7 @@ namespace FantasyColonialismMapgen
             return;
         }
 
-        public void loadViewPointTableFromDB(DBConnection database)
+        public void loadViewPointTableFromDB(DBConnection database,IConfiguration config)
         {
             
 
@@ -271,9 +274,12 @@ namespace FantasyColonialismMapgen
 
 
             //This wil be used to load in the view points
-            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ");
+            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO \"Points\" (x,y,absX,absY,worldPointId,land,waterSalinity) VALUES ");
             //This will hold the individual insert statements for the points to be inserted into the database.
             List<string> batchViewPointInsertRow = new List<string>();
+
+            int xOffset = config.GetValue<int>("ImageSettings:MapTopLeftWidth");
+            int yOffset = config.GetValue<int>("ImageSettings:MapTopLeftHeight");
 
             for (int i = 0; i < points.Count; i++)
             {
@@ -283,27 +289,15 @@ namespace FantasyColonialismMapgen
                 {
                     salinity = 3.5f;
                 }
-                batchViewPointInsertRow.Add(string.Format("({0},{1},{2},{3},NULLIF({4},-1))", MySqlHelper.EscapeString(point.Item1.ToString()), MySqlHelper.EscapeString(point.Item2.ToString()), MySqlHelper.EscapeString(point.Item3.ToString()),point.Item4, salinity));
-                /*if (i % 20000 == 0 && i > 0)
-                {
-                    Console.WriteLine($"Finished processing view point {i} points."); 
-                    //Finish the insert statement
-                    batchViewPointInsert.Append(string.Join(",", batchViewPointInsertRow));
-                    batchViewPointInsert.Append(";");
-                    //Insert all of the points into the DB
-                    database.runStringNonQueryCommand(batchViewPointInsert.ToString());
-                    batchViewPointInsert.Clear();
-                    batchViewPointInsert.Append("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ");
-                    batchViewPointInsertRow.Clear();
-                }*/
+                batchViewPointInsertRow.Add(string.Format("({0},{1},{2},{3},{4},{5},NULLIF({6},-1))", point.Item1.ToString(), point.Item2.ToString(),(point.Item1-xOffset).ToString(),(point.Item2-yOffset).ToString(), point.Item3.ToString(),point.Item4, salinity));
             }
-            database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
+            database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,absX,absY,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
         }
 
         //Populate the latitude longitude for a mercator projection
         //Latitude is within the range of -85.051 to +85.051
         //Longitude is -180.0 to +180.0
-        public void populateLatitudeLongitudeWorldPoints(DBConnection database,IConfiguration config)
+        public static void populateLatitudeLongitudeWorldPoints(DBConnection database,IConfiguration config)
         {
             //Will be used for calculating mercator coords
             double maxX = config.GetValue<double>("ImageSettings:WorldWidth") - 1;
@@ -356,7 +350,7 @@ namespace FantasyColonialismMapgen
             return Math.Atan(Math.Sinh(y)) * 57.2958;
         }
 
-        public void populateLatitudeLongitudeDimensionsPoints(DBConnection database, IConfiguration config)
+        public static void populateLatitudeLongitudeDimensionsPoints(DBConnection database, IConfiguration config)
         {
             string query = "SELECT p1.id,p2.latitude,p2.longitude, p1.y from \"Points\" p1 JOIN \"WorldPoints\" p2 on p2.id = p1.worldpointid;";
             int maxY = config.GetValue<int>("ImageSettings:WorldHeight") - 1;
@@ -430,6 +424,56 @@ namespace FantasyColonialismMapgen
                 database.runStringNonQueryCommandBatch("", "", batchUpdateCommands, 2500, ';', true);
             }
         }
+
+        //Populate the distance to coast column in the Points table
+        //The distance is the distance in kilometers to the nearest coast point.
+        //This is calculated using the latitude and longitude of the point
+        //Slightly off as the latitude and longitude are within the province, not necessarily at the coastal border
+        //TODO: Account for this
+        //Could make more efficent by taking into account already calculated distances
+        public static void assignDistanceToCoast(DBConnection db, IConfiguration config)
+        {
+            //First query all points that are coastal
+            string queryCoastal = "SELECT p1.id,p1.latitude,p1.longitude FROM \"Points\" p1 JOIN \"WorldPoints\" p2 ON p1.worldpointid = p2.id WHERE p2.coastal = true;";
+            NpgsqlDataReader readerCoastal = db.runQueryCommand(queryCoastal);
+            List<Point> coastalPoints = new List<Point>();
+            while (readerCoastal.Read())
+            {
+                //Add the coastal point to a list containing all coastal points
+                coastalPoints.Add(new Point(readerCoastal.GetInt32(0),readerCoastal.GetDouble(1),readerCoastal.GetDouble(2)));
+            }
+            readerCoastal.Close();
+
+            //Apply this for all points.
+            string queryNonCoastal = "SELECT id,latitude,longitude FROM \"Points\";";
+            NpgsqlDataReader readerNonCoastal = db.runQueryCommand(queryNonCoastal);
+            List<string> batchUpdateCommands = new List<string>();
+            int c = 0;
+            while (readerNonCoastal.Read())
+            {
+                if(c % 1000 == 0)
+                {
+                    Console.WriteLine($"Processed {c} points for distance to coast.");
+                }
+                int id = readerNonCoastal.GetInt32(0);
+                double latitude = readerNonCoastal.GetDouble(1);
+                double longitude = readerNonCoastal.GetDouble(2);
+
+                Point.findClosestPoint(latitude, longitude, coastalPoints, out Point closest, out double distance);
+
+                batchUpdateCommands.Add($"UPDATE \"Points\" SET coastalDistance = {distance}, closestCoastalPoint = {closest.Id} WHERE id = {id}");
+                c++;
+            }
+            readerNonCoastal.Close();
+
+            //Run the batch update commands
+            if (batchUpdateCommands.Count > 0)
+            {
+                db.runStringNonQueryCommandBatch("", "", batchUpdateCommands, 2500, ';', true);
+            }
+        }
+
+
 
     }
 }

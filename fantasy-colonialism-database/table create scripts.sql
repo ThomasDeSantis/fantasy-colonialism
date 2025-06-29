@@ -19,14 +19,18 @@ CREATE TABLE "WorldPoints" (
 CREATE TABLE "Points" (
       id SERIAL PRIMARY KEY,
       worldPointId int NOT NULL,
-      x numeric,
-      y numeric,
+      x numeric, -- X coordinate of the point in the world.
+      y numeric, -- Y coordinate of the point in the world.
+      absX numeric NULL, -- X coordinate considering only the map view, not the world.
+      absY numeric NULL, -- Y coordinate considering only the map view, not the world.
       land boolean NOT NULL DEFAULT true,
       waterSalinity decimal(3,1), -- NULL if a land point, otherwise the percentage of salt in the water.
       provinceId numeric NOT NULL DEFAULT -1,
       height numeric NOT NULL DEFAULT 0, -- Redundancy with world points for purposes of not having to join to retrieve the field.
       latitude decimal (5,3) NULL, -- Latitude in degrees, -90 to 90. Redudancy with world points for purposes of not having to join to retrieve the field.
       longitude decimal (6,3) NULL, -- Longitude in degrees, -180 to 180. Redudancy with world points for purposes of not having to join to retrieve the field.
+      coastalDistance decimal (7,3) NULL, -- Distance to the nearest oceanic coast in kilometers.
+      closestCoastalPoint int NULL, -- The ID of the closest coastal point.
       width numeric NULL, -- Width (N/S) of the point in meters.
       length numeric NULL, -- Length (E/W) of the point in meters.
       area numeric NULL, -- Area of the point in square meters.

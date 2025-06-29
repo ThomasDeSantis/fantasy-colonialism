@@ -17,14 +17,45 @@ namespace FantasyColonialismMapgen
         private decimal waterSalinity;
         private PointType type;
         private int provinceId;
+        private int id;//The database id on the Points table
+        private int worldPointId;//The database id on the WorldPoints table
+
+
+        private double latitude; //Latitude in degrees
+        private double longitude; //Longitude in degrees
+
+        private double latitudeRadians; //Latitude in radians
+        private double longitudeRadians; //Longitude in radians
+
+        private int coastalDistance; //Distance to the nearest coast in kilometers
+
+        private int width;//Width (N/S) in meters
+        private int length; //Length (E/W) in meters
+
+        private int area; //Area in square meters
+
+        private int height; //Height in meters above sea level
+
 
         // Getter Properties
+        public int Id { get => id; set => id = value; }
+        public int WorldPointId { get => worldPointId; set => worldPointId = value; }
         public int X { get => x; }
         public int Y { get => y; }
         public bool Land { get => land; }
         public decimal WaterSalinity { get => waterSalinity; }
         public PointType Type { get => type; }
         public int ProvinceId { get => provinceId; }
+        public double Latitude { get => latitude; }
+        public double Longitude { get => longitude; }
+        public double LatitudeRadians { get => latitudeRadians; }
+        public double LongitudeRadians { get => longitudeRadians; }
+        public int CoastalDistance { get => coastalDistance; set => coastalDistance = value; }
+        public int Width { get => width; }
+        public int Length { get => length; }
+        public int Area { get => area; }
+        public int Height { get => height; }
+
 
         //Used for generating water points
         public Point(int x, int y, bool land, decimal waterSalinity, PointType type)
@@ -46,7 +77,17 @@ namespace FantasyColonialismMapgen
             this.provinceId = provinceId;
         }
 
+        //Used for generating points for lat/long calculations
+        public Point(int id, double latitude, double longitude)
+        {
+            this.id = id;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            latitudeRadians = degreesToRadians(latitude);
+            longitudeRadians = degreesToRadians(longitude);
+        }
 
+        private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
 
         //Returns coordinates of the neighbors of a point in a plus shape
         //0 - West
@@ -350,6 +391,60 @@ namespace FantasyColonialismMapgen
             }
             rdr.Close();
             return validLandPoints;
+        }
+
+        //Given a latitude and longitude, find the closest point within the set of points provided
+        //Returns the closest point and the distance to that point
+        //If no point is found, closest will be null and minDistance will be -1
+        public static void findClosestPoint(double latitude, double longitude, List<Point> points, out Point closest, out double minDistance)
+        {
+            closest = null;
+            minDistance = double.MaxValue;
+
+            double latRadians = degreesToRadians(latitude);
+            double lonRadians = degreesToRadians(longitude);
+
+            foreach (var point in points)
+            {
+                double distance = calculateHaversineDistance(latRadians, lonRadians, point.LatitudeRadians, point.LongitudeRadians,true);
+
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    closest = point;
+                }
+            }
+
+            if (closest == null)
+            {
+                minDistance = -1; // No point found
+            }
+        }
+
+        //https://en.wikipedia.org/wiki/Haversine_formula
+        //Calculates the distance between 2 points on the world given latitude and longitude.
+        //KM determines whether or not we send it in KM or M
+        public static double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2, bool KM)
+        {
+            const double R = 6371e3; // Earth radius in meters
+
+            double dLat = lat2 - lat1;
+            double dLon = lon2 - lon1;
+
+            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                       Math.Cos(lat1) * Math.Cos(lat2) *
+                       Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            if (KM)
+            {
+                return (R * c)/1000.0;
+            }
+            else
+            {
+                return R * c;
+            }
         }
 
     }

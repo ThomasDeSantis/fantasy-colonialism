@@ -32,7 +32,8 @@ if (dbCon.IsConnect(connectionString))
     //FractalCoastline fractalCoastlineGenerator = new FractalCoastline(parentDirectory+"\\Maps\\Fractal Coastline\\","coastline-map-base.png",config);
     //fractalCoastlineGenerator.generateFractalCoastlineWithTurbulence();
 
-    WorldGen worldGenerator = new WorldGen(parentDirectory + "\\Maps\\land-map.png", config);
+    //WorldGen worldGenerator = new WorldGen(parentDirectory + "\\Maps\\land-map.png", config);
+    WorldGen.assignDistanceToCoast(dbCon, config);
 
     //worldGenerator.populatePointsAndWorldPointsFromImage(parentDirectory, dbCon,config);
 
@@ -46,8 +47,8 @@ if (dbCon.IsConnect(connectionString))
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
     //worldGenerator.populateLatitudeLongitude(dbCon, config);
     //worldGenerator.populateLatitudeLongitudeDimensionsPoints(dbCon,config);
-    BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
-    biomeGenerator.generateBiomes(dbCon);
+    //BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
+    //biomeGenerator.generateBiomes(dbCon);
     //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png",config);
 
     dbCon.Close();
