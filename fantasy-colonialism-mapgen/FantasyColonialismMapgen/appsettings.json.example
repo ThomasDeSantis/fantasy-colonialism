@@ -9,8 +9,9 @@
     "EastLongitude": "101.2"
   },
   "HeightGenerationSettings": {
-    "Amplitude": 100,
-    "MaxRiseModifier": 75
+    "Amplitude": 80,
+    "MaxRiseModifier": 63,
+    "SoftHeightLimit": 4500
   },
   "ImageSettings": {
     "WorldWidth": 3604,

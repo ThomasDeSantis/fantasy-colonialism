@@ -8,17 +8,24 @@ namespace FantasyColonialismMapgen
 {
     class Perlin
     {
-        //SimplexPerlin perlin;
+        FastNoiseLite noise;
+        Random random = new Random();
         public Perlin()
         {
-            //perlin = new SimplexPerlin();
+            noise = new FastNoiseLite(random.Next());
+            //Was prior set to perlin, change that if you find issues with coastline generation
+            noise.SetNoiseType(FastNoiseLite.NoiseType.Perlin);
+            //noise.SetFractalType(FastNoiseLite.FractalType.FBm);
+            noise.SetFractalOctaves(5);
+            noise.SetFractalLacunarity(2.0f);
+            noise.SetFractalGain(0.5f);
+            noise.SetFractalWeightedStrength(0.5f);
+            noise.SetFrequency(0.015f);
         }
 
-        public float getPerlin(float x, float y)
+        public float GetNoise(float x, float y)
         {
-            // var value = perlin.GetValue(x, y);
-            //return value;
-            return -1f;
+            return noise.GetNoise(x, y);
         }
     }
 }
