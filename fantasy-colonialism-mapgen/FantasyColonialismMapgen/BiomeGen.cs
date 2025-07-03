@@ -540,7 +540,7 @@ namespace FantasyColonialismMapgen
             public double averageTempSummer;
             public double averageTempWinter;
             public double averageRainfall; // mm/year
-            public int coastalDistance;
+            public double coastalDistance;
             public int length;//EW
             public int width;//NS
         }

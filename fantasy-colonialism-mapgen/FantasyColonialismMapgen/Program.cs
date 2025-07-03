@@ -47,9 +47,10 @@ if (dbCon.IsConnect(connectionString))
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
     //worldGenerator.populateLatitudeLongitude(dbCon, config);
     //worldGenerator.populateLatitudeLongitudeDimensionsPoints(dbCon,config);
-    BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
-    biomeGenerator.generateBiomes(dbCon);
+    //BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
+    //biomeGenerator.generateBiomes(dbCon);
     //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png",config);
+    RiverErosionGen riverGen = new RiverErosionGen(dbCon, config, parentDirectory + "\\Maps\\");
 
     dbCon.Close();
 }

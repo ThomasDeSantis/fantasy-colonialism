@@ -19,3 +19,7 @@ USING HASH (id);
 CREATE INDEX id_p
 ON "Points"
 USING HASH (id);
+
+CREATE INDEX land_p
+ON "Points"
+USING HASH (land);

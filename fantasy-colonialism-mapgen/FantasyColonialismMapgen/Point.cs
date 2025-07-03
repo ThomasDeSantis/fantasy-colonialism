@@ -11,54 +11,67 @@ namespace FantasyColonialismMapgen
     class Point
     {
         //You will not need to change any of the properties after instantiation.
-        private int x;
-        private int y;
+        private int x = -1;
+        private int y = -1;
+        private int absX = -1;
+        private int absY = -1;
         private bool land;
-        private decimal waterSalinity;
-        private PointType type;
-        private int provinceId;
-        private int id;//The database id on the Points table
-        private int worldPointId;//The database id on the WorldPoints table
+        private float waterSalinity = -1;
+        private PointType type = PointType.undefined;
+        private int provinceId = -1;
+        private int id = -1;//The database id on the Points table
+        private int worldPointId = -1;//The database id on the WorldPoints table
 
 
-        private double latitude; //Latitude in degrees
-        private double longitude; //Longitude in degrees
+        private double latitude = -1.0; //Latitude in degrees
+        private double longitude = -1.0; //Longitude in degrees
 
-        private double latitudeRadians; //Latitude in radians
-        private double longitudeRadians; //Longitude in radians
+        private double latitudeRadians = -1.0; //Latitude in radians
+        private double longitudeRadians = -1.0; //Longitude in radians
 
-        private int coastalDistance; //Distance to the nearest coast in kilometers
+        private double coastalDistance = -1; //Distance to the nearest coast in kilometers
 
-        private int width;//Width (N/S) in meters
-        private int length; //Length (E/W) in meters
+        private int width = -1;//Width (N/S) in meters
+        private int length = -1; //Length (E/W) in meters
 
-        private int area; //Area in square meters
+        private int area = -1; //Area in square meters
 
-        private int height; //Height in meters above sea level
+        private int height = -1; //Height in meters above sea level
+        private double steepness = -1; //Steepness of the point in degrees
+
+        private double averageTemperatureSummer = -1; //Average temperature in summer in degrees Celsius
+        private double averageTemperatureWinter = -1; //Average temperature in winter in degrees Celsius
+
+        private double averageRainfall = -1; //Average rainfall in mm/year
 
 
         // Getter Properties
-        public int Id { get => id; set => id = value; }
+        public int Id { get => id; }
         public int WorldPointId { get => worldPointId; set => worldPointId = value; }
         public int X { get => x; }
         public int Y { get => y; }
+        public int AbsX { get => absX; set => absX = value; }
+        public int AbsY { get => absY; set => absY = value; }
         public bool Land { get => land; }
-        public decimal WaterSalinity { get => waterSalinity; }
+        public float WaterSalinity { get => waterSalinity; }
         public PointType Type { get => type; }
         public int ProvinceId { get => provinceId; }
         public double Latitude { get => latitude; }
         public double Longitude { get => longitude; }
         public double LatitudeRadians { get => latitudeRadians; }
         public double LongitudeRadians { get => longitudeRadians; }
-        public int CoastalDistance { get => coastalDistance; set => coastalDistance = value; }
+        public double CoastalDistance { get => coastalDistance; set => coastalDistance = value; }
         public int Width { get => width; }
         public int Length { get => length; }
         public int Area { get => area; }
         public int Height { get => height; }
+        public double AverageTemperatureSummer { get => averageTemperatureSummer; }
+        public double AverageTemperatureWinter { get => averageTemperatureWinter; }
+        public double AverageRainfall { get => averageRainfall; }
 
 
         //Used for generating water points
-        public Point(int x, int y, bool land, decimal waterSalinity, PointType type)
+        public Point(int x, int y, bool land, float waterSalinity, PointType type)
         {
             this.x = x;
             this.y = y;
@@ -85,6 +98,36 @@ namespace FantasyColonialismMapgen
             this.longitude = longitude;
             latitudeRadians = degreesToRadians(latitude);
             longitudeRadians = degreesToRadians(longitude);
+        }
+
+        //Used for generating points with all properties
+        public Point(int id, int worldPointId, int x, int y, int absX, int absY, bool land, float waterSalinity, PointType type, int provinceId,
+                     double latitude, double longitude, double coastalDistance, int width, int length, int area, int height,
+                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall, double steepness)
+        {
+            this.id = id;
+            this.worldPointId = worldPointId;
+            this.x = x;
+            this.y = y;
+            this.absX = absX;
+            this.absY = absY;
+            this.land = land;
+            this.waterSalinity = waterSalinity;
+            this.type = type;
+            this.provinceId = provinceId;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.latitudeRadians = degreesToRadians(latitude);
+            this.longitudeRadians = degreesToRadians(longitude);
+            this.coastalDistance = coastalDistance;
+            this.width = width;
+            this.length = length;
+            this.area = area;
+            this.height = height;
+            this.averageTemperatureSummer = averageTemperatureSummer;
+            this.averageTemperatureWinter = averageTemperatureWinter;
+            this.averageRainfall = averageRainfall;
+            this.steepness = steepness;
         }
 
         private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
@@ -447,11 +490,130 @@ namespace FantasyColonialismMapgen
             }
         }
 
+        public override string ToString()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            //Output coordinates
+            if ((x + y + absX + absY) != -4)//If all are undefined this will be the value
+            {
+                if (x == -1 && y == -1)
+                {
+                    stringBuilder.AppendLine($"Point ({absX},{absY}):\n");
+                } else if (absX == -1 && absY == -1)
+                {
+                    stringBuilder.AppendLine($"Point ({x},{y}):\n");
+                }
+                else
+                {
+                    stringBuilder.AppendLine($"Point ({x},{y})|({absX},{absY}):");
+                }
+            }
+            //Output id
+            if(id != -1 || worldPointId != -1)
+            {
+                if(id == -1)
+                {
+                    stringBuilder.AppendLine($"WorldPointId:{worldPointId}");
+                }
+                else if (worldPointId == -1)
+                {
+                    stringBuilder.AppendLine($"Id:{id}");
+                }
+                else
+                {
+                    stringBuilder.AppendLine($"Id:{id}|{worldPointId}");
+                }               
+            }
+            if(PointType.undefined != type)
+            {
+                stringBuilder.AppendLine($"Type:{getTerrainDescription()}");
+            }
+            if(coastalDistance != -1)
+            {
+                stringBuilder.AppendLine($"Coastal Distance:{coastalDistance} km");
+            }
+            if ((length != -1 && width != -1) || (area != -1))
+            {
+                stringBuilder.AppendLine(getDimensionsDescription());
+            }
+            if (height != -1)
+            {
+                if (steepness != -1)
+                {
+                    stringBuilder.AppendLine($"Height:{height} m above sea level Steepness: {steepness} degrees");
+                }
+                else
+                {
+                    stringBuilder.AppendLine($"Height:{height} m above sea level");
+                }
+            }
+            if(averageTemperatureSummer != -1 || averageTemperatureWinter != -1)
+            {
+                stringBuilder.AppendLine($"Average Temperature Summer:{averageTemperatureSummer} C Winter:{averageTemperatureWinter} C");
+            } 
+            if(averageRainfall != -1)
+            {
+                stringBuilder.AppendLine($"Average Rainfall:{averageRainfall} mm/year");
+            }
+            return stringBuilder.ToString();
+
+        }
+
+        private string getTerrainDescription()
+        {
+            switch (type)
+            {
+                case PointType.land:
+                    if(coastalDistance == 0)
+                    {
+                        return "Coastline";
+                    }
+                    return "Land";
+                case PointType.ocean:
+                    return $"Ocean ({waterSalinity}%s)";
+                case PointType.lake:
+                    return $"Lake({waterSalinity}%s)";
+                default:
+                    return "Unknown";
+            }
+        }
+
+        private string getDimensionsDescription()
+        {
+            StringBuilder dimensions = new StringBuilder();
+            if (width != -1 && length != -1)
+            {
+                dimensions.Append($"Width(N/S):{width}m Length(E/W):{length}m ");
+            }
+            else if (area != -1)
+            {
+                dimensions.Append($"Area:{area}m^2 ");
+            }
+            return dimensions.ToString();
+        }
+
+        public static PointType stringToPointType(string typeString)
+        {
+            switch (typeString.ToLower())
+            {
+                case "land":
+                    return PointType.land;
+                case "ocean":
+                    return PointType.ocean;
+                case "lake":
+                    return PointType.lake;
+                default:
+                    return PointType.undefined;
+            }
+        }
+
     }
 
     enum PointType{
-        land,
-        ocean,
-        lake
+        undefined = 0,
+        land = 1,
+        ocean = 2,
+        lake = 3,
     }
+
 }
