@@ -10,7 +10,6 @@ using SixLabors.ImageSharp;
 
 using SixLabors.ImageSharp.PixelFormats;
 using MySql.Data.MySqlClient;
-using static Org.BouncyCastle.Asn1.Cmp.Challenge;
 
 namespace FantasyColonialismMapgen
 {
