@@ -13,8 +13,6 @@ namespace FantasyColonialismMapgen
         //You will not need to change any of the properties after instantiation.
         private int x = -1;
         private int y = -1;
-        private int absX = -1;
-        private int absY = -1;
         private bool land;
         private float waterSalinity = -1;
         private PointType type = PointType.undefined;
@@ -37,12 +35,14 @@ namespace FantasyColonialismMapgen
         private int area = -1; //Area in square meters
 
         private int height = -1; //Height in meters above sea level
-        private double steepness = -1; //Steepness of the point in degrees
 
         private double averageTemperatureSummer = -1; //Average temperature in summer in degrees Celsius
         private double averageTemperatureWinter = -1; //Average temperature in winter in degrees Celsius
 
         private double averageRainfall = -1; //Average rainfall in mm/year
+
+        private double erosionFactor = 0.5; //Used for river generation. Holds how easily the ground erodes.
+        public double waterRunoff = 0.5; //Used for river generation. Holds the volume of runoff the point receives. Directly accesible as it is purely used by river generation.
 
 
         // Getter Properties
@@ -50,8 +50,6 @@ namespace FantasyColonialismMapgen
         public int WorldPointId { get => worldPointId; set => worldPointId = value; }
         public int X { get => x; }
         public int Y { get => y; }
-        public int AbsX { get => absX; set => absX = value; }
-        public int AbsY { get => absY; set => absY = value; }
         public bool Land { get => land; }
         public float WaterSalinity { get => waterSalinity; }
         public PointType Type { get => type; }
@@ -68,6 +66,8 @@ namespace FantasyColonialismMapgen
         public double AverageTemperatureSummer { get => averageTemperatureSummer; }
         public double AverageTemperatureWinter { get => averageTemperatureWinter; }
         public double AverageRainfall { get => averageRainfall; }
+        public double ErosionFactor { get => erosionFactor; set => erosionFactor = value; }
+
 
 
         //Used for generating water points
@@ -101,16 +101,14 @@ namespace FantasyColonialismMapgen
         }
 
         //Used for generating points with all properties
-        public Point(int id, int worldPointId, int x, int y, int absX, int absY, bool land, float waterSalinity, PointType type, int provinceId,
+        public Point(int id, int worldPointId, int x, int y, bool land, float waterSalinity, PointType type, int provinceId,
                      double latitude, double longitude, double coastalDistance, int width, int length, int area, int height,
-                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall, double steepness)
+                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall)
         {
             this.id = id;
             this.worldPointId = worldPointId;
             this.x = x;
             this.y = y;
-            this.absX = absX;
-            this.absY = absY;
             this.land = land;
             this.waterSalinity = waterSalinity;
             this.type = type;
@@ -127,7 +125,6 @@ namespace FantasyColonialismMapgen
             this.averageTemperatureSummer = averageTemperatureSummer;
             this.averageTemperatureWinter = averageTemperatureWinter;
             this.averageRainfall = averageRainfall;
-            this.steepness = steepness;
         }
 
         private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
@@ -150,10 +147,28 @@ namespace FantasyColonialismMapgen
             };
         }
 
+        //Returns coordinates of the neighbors of a point in a plus shape, ensuring they are within the bounds of the given width and height
         public static List<(int, int)> getNeighborsPlusSafe((int, int) point, int width, int height)
         {
             int x = point.Item1;
             int y = point.Item2;
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y), // left
+                (x + 1, y), // right
+                (x, y - 1), // up
+                (x, y + 1)  // down
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
+        }
+
+        public List<(int, int)> getNeighborsPlusSafe(int width, int height)
+        {
             var neighbors = new List<(int, int)>
             {
                 (x - 1, y), // left
@@ -203,6 +218,24 @@ namespace FantasyColonialismMapgen
             ).ToList();
         }
 
+        //Returns coordinates of the neighbors of a point in a x shape
+        public List<(int, int)> getNeighborsXSafe(int width, int height)
+        {
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y - 1), // up left
+                (x -1, y + 1), // down left
+                (x + 1, y - 1), // up right
+                (x + 1, y + 1) // down right
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
+        }
+
         //Returns coordinates of the neighbors of a point in a plus shape
         public static List<(int, int)> getNeighborsSquare((int, int) point)
         {
@@ -226,6 +259,28 @@ namespace FantasyColonialismMapgen
         {
             int x = point.Item1;
             int y = point.Item2;
+            var neighbors = new List<(int, int)>
+            {
+                (x - 1, y), // left
+                (x + 1, y), // right
+                (x, y - 1), // up
+                (x, y + 1),  // down
+                (x - 1, y - 1), // up left
+                (x -1, y + 1), // down left
+                (x + 1, y - 1), // up right
+                (x + 1, y + 1) // down right
+            };
+
+            // Filter neighbors to ensure they are within bounds
+            return neighbors.Where(n =>
+                n.Item1 >= 0 && n.Item1 < width &&
+                n.Item2 >= 0 && n.Item2 < height
+            ).ToList();
+        }
+
+        //Returns coordinates of the neighbors of a point in a plus shape
+        public List<(int, int)> getNeighborsSquareSafe(int width, int height, bool abs)
+        {
             var neighbors = new List<(int, int)>
             {
                 (x - 1, y), // left
@@ -494,18 +549,18 @@ namespace FantasyColonialismMapgen
         {
             StringBuilder stringBuilder = new StringBuilder();
             //Output coordinates
-            if ((x + y + absX + absY) != -4)//If all are undefined this will be the value
+            if ((x + y) != -2)//If both are undefined this will be the value
             {
                 if (x == -1 && y == -1)
                 {
-                    stringBuilder.AppendLine($"Point ({absX},{absY}):\n");
-                } else if (absX == -1 && absY == -1)
+                    stringBuilder.AppendLine($"Point ({x},{y}):\n");
+                } else if (x == -1 && y == -1)
                 {
                     stringBuilder.AppendLine($"Point ({x},{y}):\n");
                 }
                 else
                 {
-                    stringBuilder.AppendLine($"Point ({x},{y})|({absX},{absY}):");
+                    stringBuilder.AppendLine($"Point ({x},{y})|({x},{y}):");
                 }
             }
             //Output id
@@ -538,14 +593,7 @@ namespace FantasyColonialismMapgen
             }
             if (height != -1)
             {
-                if (steepness != -1)
-                {
-                    stringBuilder.AppendLine($"Height:{height} m above sea level Steepness: {steepness} degrees");
-                }
-                else
-                {
-                    stringBuilder.AppendLine($"Height:{height} m above sea level");
-                }
+                stringBuilder.AppendLine($"Height:{height} m above sea level");
             }
             if(averageTemperatureSummer != -1 || averageTemperatureWinter != -1)
             {

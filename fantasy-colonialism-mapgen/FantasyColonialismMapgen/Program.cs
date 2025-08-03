@@ -33,24 +33,22 @@ if (dbCon.IsConnect(connectionString))
     //fractalCoastlineGenerator.generateFractalCoastlineWithTurbulence();
 
     //WorldGen worldGenerator = new WorldGen(parentDirectory + "\\Maps\\land-map.png", config);
-    //WorldGen.assignDistanceToCoast(dbCon, config);
-
     //worldGenerator.populatePointsAndWorldPointsFromImage(parentDirectory, dbCon,config);
-
+    //WorldGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 3060, 3604);
 
 
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
     //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
 
-    //HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
-    //HeightMapGen.renderCoastline(dbCon, parentDirectory + "\\sf-continent-coastline.png", 3060, 3604);
+   // HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
-    //worldGenerator.populateLatitudeLongitude(dbCon, config);
-    //worldGenerator.populateLatitudeLongitudeDimensionsPoints(dbCon,config);
-    //BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
-    //biomeGenerator.generateBiomes(dbCon);
-    //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png",config);
-    RiverErosionGen riverGen = new RiverErosionGen(dbCon, config, parentDirectory + "\\Maps\\");
+    //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png", config);
+
+    BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
+    biomeGenerator.generateBiomes(dbCon);
+    
+    //RiverErosionGen riverGen = new RiverErosionGen(dbCon, config, parentDirectory + "\\Maps\\");
+    //riverGen.generateRiversAndLakes(dbCon);
 
     dbCon.Close();
 }

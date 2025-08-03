@@ -18,13 +18,6 @@ namespace FantasyColonialismMapgen
     {
         public static void generateHeightMap(DBConnection db,IConfiguration config, string parentDirectory, string roughnessMap)
         {
-            
-            Console.WriteLine("Begin setting coastal provinces: " + DateTime.UtcNow.ToString());
-            setCoastalPoints(db);
-            Console.WriteLine("End setting coastal provinces: " + DateTime.UtcNow.ToString());
-            
-            
-
             roughnessColorMap[] roughnessColorMaps = loadRoughnessColorMaps(config);
             int width = config.GetValue<int>("ImageSettings:WorldWidth");
             int height = config.GetValue<int>("ImageSettings:WorldHeight");
@@ -75,88 +68,6 @@ namespace FantasyColonialismMapgen
             //Console.WriteLine("Min height: " + min + "Max height: " + max);
         }
 
-        private static void setCoastalPoints(DBConnection db)
-        {
-            // Create a dictionary to store coastal points
-            var points = new Dictionary<(int x, int y), (bool,int)>();
-
-            // Query all points from the database
-            string query = "SELECT x, y, land, id FROM \"WorldPoints\";";
-            NpgsqlDataReader reader = db.runQueryCommand(query);
-
-            bool first = true;
-
-            // Populate the dictionary with x, y as key and land status as value
-            while (reader.Read())
-            {
-                int x = reader.GetInt32(0);
-                int y = reader.GetInt32(1);
-                bool isLand = reader.GetBoolean(2);
-                int id = reader.GetInt32(3);
-                points[(x, y)] = (isLand, id);
-            }
-            reader.Close();
-
-            List<string> batchCoastalUpdateRow = new List<string>();
-
-            // Iterate through the dictionary to identify coastal points
-            foreach (var point in points.Keys.ToList())
-            {
-                if (points[point].Item1)
-                {
-                    // Check neighboring points to determine if the current point is coastal
-                    var neighbors = Point.getNeighborsSquare((point.x, point.y));
-
-                    foreach (var neighbor in neighbors)
-                    {
-                        if (points.ContainsKey(neighbor) && !points[neighbor].Item1)
-                        {
-                            batchCoastalUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
-                            break;
-                        }
-                    }
-                }
-            }
-
-            db.runStringNonQueryCommandBatch("","", batchCoastalUpdateRow, 1000,';', true);
-        }
-
-        public static void renderCoastline(DBConnection db, string coastLineMapPath, int height, int width)
-        {
-            string query = "SELECT x, y, coastal, land FROM \"WorldPoints\"";
-            NpgsqlDataReader reader = db.runQueryCommand(query);
-            // Create a new image with the specified dimensions
-            using (SixLabors.ImageSharp.Image<Rgba32> image = new SixLabors.ImageSharp.Image<Rgba32>(width, height))
-            {
-                while (reader.Read())
-                {
-                    int x = reader.GetInt32(0);
-                    int y = reader.GetInt32(1);
-                    bool isCoastal = reader.GetBoolean(2);
-                    bool isLand = reader.GetBoolean(3);
-                    if (!isLand)
-                    {
-                        image[x,y] = Rgba32.ParseHex("#0000FF"); // Water color
-                    }
-                    else
-                    {
-                        // Set the pixel color based on the coastal status
-                        if (isCoastal)
-                        {
-                            image[x, y] = Rgba32.ParseHex("#FF0000"); // Coastal color
-                        }
-                        else
-                        {
-                            image[x, y] = Rgba32.ParseHex("#FFFFFF"); // Non-coastal color
-                        }
-                    }
-                }
-
-                reader.Close();
-                image.Save(coastLineMapPath);
-            }
-        }
-
         private static pointHeight[][] loadHeightMap(DBConnection db, int width, int height, bool defaultInit, bool worldPoints,IConfiguration config)
         {
 
@@ -205,11 +116,6 @@ namespace FantasyColonialismMapgen
                 }
                 int x = rdr.GetInt32(0);
                 int y = rdr.GetInt32(1);
-                if (!worldPoints)
-                {
-                    x -= widthOffset;
-                    y -= heightOffset;
-                }
                 heightMap[y][x].coastal = rdr.GetBoolean(4);
                 if (defaultInit && (!heightMap[y][x].coastal))
                 {
@@ -578,13 +484,31 @@ namespace FantasyColonialismMapgen
                 {
                     if (!heightMap[y][x].water)
                     {
-                        batchHeightUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET height = {0} WHERE id = {1}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
+                        batchHeightUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET height = {0}, terrainType = {1} WHERE id = {2}", MySqlHelper.EscapeString(heightMap[y][x].height.ToString()),terrainTypeToDBEnum(heightMap[y][x].type), MySqlHelper.EscapeString(heightMap[y][x].id.ToString())));
                     }
                 }
             }
 
 
             db.runStringNonQueryCommandBatch("","",batchHeightUpdateRow,2500,';',true);
+        }
+
+        private static string terrainTypeToDBEnum(string type)
+        {
+            // Convert the terrain type to its corresponding database enum value
+            switch (type)
+            {
+                case "Plains":
+                    return "'flatland'";
+                case "Hills":
+                    return "'hills'";
+                case "Mountains":
+                    return "'mountains'";
+                case "Deep Mountains":
+                    return "'mountains'";
+                default:
+                    return "'undefined'"; // Undefined or unknown type
+            }
         }
 
         //This reflects the height on the world points table onto the points table

@@ -62,6 +62,9 @@ namespace FantasyColonialismMapgen
             Console.WriteLine($"Begin populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
             populateLatitudeLongitudeDimensionsPoints(database,config);
             Console.WriteLine($"Finished populating latitude and longitude for view points: {DateTime.UtcNow.ToString()}");
+            Console.WriteLine("Begin setting coastal provinces: " + DateTime.UtcNow.ToString());
+            setCoastalPoints(database);
+            Console.WriteLine("End setting coastal provinces: " + DateTime.UtcNow.ToString());
             Console.WriteLine($"Begin assigning distance to coast for points: {DateTime.UtcNow.ToString()}");
             assignDistanceToCoast(database, config);
             Console.WriteLine($"Finished assigning distance to coast for points: {DateTime.UtcNow.ToString()}");
@@ -190,7 +193,7 @@ namespace FantasyColonialismMapgen
             int pointHeight = 0;
 
             //Get width/height rather than using the config dimensions to ensure it is the truest representation of the table
-            string query = "SELECT MAX(x) - MIN(x) as width, MAX(y) - MIN(y) as height FROM \"Points\";";
+            string query = "SELECT MAX(x) as width, MAX(y) as height FROM \"Points\";";
             NpgsqlDataReader reader = database.runQueryCommand(query);
 
             if (reader.Read())
@@ -219,8 +222,8 @@ namespace FantasyColonialismMapgen
             NpgsqlDataReader readerPoints = database.runQueryCommand(queryPoints);
             while (readerPoints.Read())
             {
-                int x = readerPoints.GetInt32(0) - mainViewTopLeftX;
-                int y = readerPoints.GetInt32(1) - mainViewTopLeftY;
+                int x = readerPoints.GetInt32(0);
+                int y = readerPoints.GetInt32(1);
                 bool land = readerPoints.GetBoolean(2);
                 if (land)
                 {
@@ -274,7 +277,7 @@ namespace FantasyColonialismMapgen
 
 
             //This wil be used to load in the view points
-            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO \"Points\" (x,y,absX,absY,worldPointId,land,waterSalinity) VALUES ");
+            StringBuilder batchViewPointInsert = new StringBuilder("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ");
             //This will hold the individual insert statements for the points to be inserted into the database.
             List<string> batchViewPointInsertRow = new List<string>();
 
@@ -289,9 +292,9 @@ namespace FantasyColonialismMapgen
                 {
                     salinity = 3.5f;
                 }
-                batchViewPointInsertRow.Add(string.Format("({0},{1},{2},{3},{4},{5},NULLIF({6},-1))", point.Item1.ToString(), point.Item2.ToString(),(point.Item1-xOffset).ToString(),(point.Item2-yOffset).ToString(), point.Item3.ToString(),point.Item4, salinity));
+                batchViewPointInsertRow.Add(string.Format("({0},{1},{2},{3},NULLIF({4},-1))", (point.Item1-xOffset).ToString(),(point.Item2-yOffset).ToString(), point.Item3.ToString(),point.Item4, salinity));
             }
-            database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,absX,absY,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
+            database.runStringNonQueryCommandBatchInsert("INSERT INTO \"Points\" (x,y,worldPointId,land,waterSalinity) VALUES ", batchViewPointInsertRow, 20000, true);
         }
 
         //Populate the latitude longitude for a mercator projection
@@ -473,7 +476,87 @@ namespace FantasyColonialismMapgen
             }
         }
 
+        private static void setCoastalPoints(DBConnection db)
+        {
+            // Create a dictionary to store coastal points
+            var points = new Dictionary<(int x, int y), (bool, int)>();
 
+            // Query all points from the database
+            string query = "SELECT x, y, land, id FROM \"WorldPoints\";";
+            NpgsqlDataReader reader = db.runQueryCommand(query);
+
+            bool first = true;
+
+            // Populate the dictionary with x, y as key and land status as value
+            while (reader.Read())
+            {
+                int x = reader.GetInt32(0);
+                int y = reader.GetInt32(1);
+                bool isLand = reader.GetBoolean(2);
+                int id = reader.GetInt32(3);
+                points[(x, y)] = (isLand, id);
+            }
+            reader.Close();
+
+            List<string> batchCoastalUpdateRow = new List<string>();
+
+            // Iterate through the dictionary to identify coastal points
+            foreach (var point in points.Keys.ToList())
+            {
+                if (points[point].Item1)
+                {
+                    // Check neighboring points to determine if the current point is coastal
+                    var neighbors = Point.getNeighborsSquare((point.x, point.y));
+
+                    foreach (var neighbor in neighbors)
+                    {
+                        if (points.ContainsKey(neighbor) && !points[neighbor].Item1)
+                        {
+                            batchCoastalUpdateRow.Add(string.Format("UPDATE \"WorldPoints\" SET coastal = true WHERE id = {0}", MySqlHelper.EscapeString(points[point].Item2.ToString())));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            db.runStringNonQueryCommandBatch("", "", batchCoastalUpdateRow, 1000, ';', true);
+        }
+
+        public static void renderCoastline(DBConnection db, string coastLineMapPath, int height, int width)
+        {
+            string query = "SELECT x, y, coastal, land FROM \"WorldPoints\"";
+            NpgsqlDataReader reader = db.runQueryCommand(query);
+            // Create a new image with the specified dimensions
+            using (SixLabors.ImageSharp.Image<Rgba32> image = new SixLabors.ImageSharp.Image<Rgba32>(width, height))
+            {
+                while (reader.Read())
+                {
+                    int x = reader.GetInt32(0);
+                    int y = reader.GetInt32(1);
+                    bool isCoastal = reader.GetBoolean(2);
+                    bool isLand = reader.GetBoolean(3);
+                    if (!isLand)
+                    {
+                        image[x, y] = Rgba32.ParseHex("#0000FF"); // Water color
+                    }
+                    else
+                    {
+                        // Set the pixel color based on the coastal status
+                        if (isCoastal)
+                        {
+                            image[x, y] = Rgba32.ParseHex("#FF0000"); // Coastal color
+                        }
+                        else
+                        {
+                            image[x, y] = Rgba32.ParseHex("#FFFFFF"); // Non-coastal color
+                        }
+                    }
+                }
+
+                reader.Close();
+                image.Save(coastLineMapPath);
+            }
+        }
 
     }
 }

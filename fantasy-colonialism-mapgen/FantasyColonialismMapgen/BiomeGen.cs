@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 
 using SixLabors.ImageSharp.PixelFormats;
-using MySql.Data.MySqlClient;
 
 namespace FantasyColonialismMapgen
 {
@@ -89,14 +88,14 @@ namespace FantasyColonialismMapgen
         public void generateBiomes(DBConnection db)
         {
             Console.WriteLine($"Begin assigning heat maps: {DateTime.UtcNow.ToString()}");
-            //assignHeatMap();
+            assignHeatMap();
             Console.WriteLine($"Finished assigning heat maps: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin rendering heat maps: {DateTime.UtcNow.ToString()}");
-            //renderHeatMap(true, "heatmap_summer.png");
-            //renderHeatMap(false, "heatmap_winter.png");
+            renderHeatMap(true, "heatmap_summer.png");
+            renderHeatMap(false, "heatmap_winter.png");
             Console.WriteLine($"Finished rendering heat maps: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin writing temperatures to DB: {DateTime.UtcNow.ToString()}");
-            //writeTempsToDB(db);
+            writeTempsToDB(db);
             Console.WriteLine($"Finished writing temperatures to DB: {DateTime.UtcNow.ToString()}");
             Console.WriteLine($"Begin assigning rainfall: {DateTime.UtcNow.ToString()}");
             assignAverageRainfall();

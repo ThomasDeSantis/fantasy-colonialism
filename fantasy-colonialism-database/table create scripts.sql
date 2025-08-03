@@ -19,10 +19,8 @@ CREATE TABLE "WorldPoints" (
 CREATE TABLE "Points" (
       id SERIAL PRIMARY KEY,
       worldPointId int NOT NULL,
-      x numeric NOT NULL, -- X coordinate of the point in the world.
-      y numeric NOT NULL, -- Y coordinate of the point in the world.
-      absX numeric NOT NULL, -- X coordinate considering only the map view, not the world.
-      absY numeric NOT NULL, -- Y coordinate considering only the map view, not the world.
+      x numeric NOT NULL, -- X coordinate of the point in the view.
+      y numeric NOT NULL, -- Y coordinate of the point in the view.
       land boolean NOT NULL DEFAULT true,
       waterSalinity decimal(3,1), -- NULL if a land point, otherwise the percentage of salt in the water.
       provinceId numeric NOT NULL DEFAULT -1,
@@ -37,7 +35,8 @@ CREATE TABLE "Points" (
       summerSolsticeAverageTemperature decimal(3, 1) NULL, -- Average temperature in degrees Celsius during the summer solstice.
       winterSolsticeAverageTemperature decimal(3, 1) NULL, -- Average temperature in degrees Celsius during the winter solstice.
       averageRainfall numeric NULL, -- Average yearly rainfall in millimeters.
-      type pointType NOT NULL DEFAULT 'undefined' -- Type of the point, can be land, ocean, or lake.
+      type pointType NOT NULL DEFAULT 'undefined', -- Type of the point, can be land, ocean, or lake.
+      terrainType terrainType NOT NULL DEFAULT 'undefined' -- Type of terrain that defines the roughness of the point. Defined at height gen.
 );
 
 -- A province is a collection of contiguous points.
@@ -61,6 +60,13 @@ CREATE TYPE pointType AS ENUM (
     'undefined'
 );
 
+CREATE TYPE terrainType AS ENUM (
+    'undefined', -- A point that has not been assigned a terrain type.
+    'flatland',
+    'hills',
+    'mountains'
+);
+
 --Header table that holds general information about the river.
 --Rivers can be made up of multiple points, and the points will never be shared between them.
 --A river will empty into the ocean, a lake, or another river.
@@ -73,7 +79,7 @@ CREATE TABLE "Rivers"(
 
 
 -- This denotes a point that holds a river. Multiple rivers can share a point, but a river point can only be part of one river.
-CREATE TABLE "RiversPoints" (
+CREATE TABLE "RiverPoints" (
     id SERIAL PRIMARY KEY,
     riverId int NOT NULL, -- The ID of the river this point belongs to.
     pointId int NOT NULL, -- The ID of the point this river point belongs to.
@@ -107,7 +113,7 @@ CREATE TABLE "Lakes" (
 
 );
 
-CREATE TABLE "LakesPoints" (
+CREATE TABLE "LakePoints" (
     id SERIAL PRIMARY KEY,
     lakeId int NOT NULL, -- The ID of the lake this point belongs to.
     pointId int NOT NULL, -- The ID of the point this lake point belongs to.
