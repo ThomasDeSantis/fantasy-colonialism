@@ -22,6 +22,8 @@ namespace FantasyColonialismMapgen
         Map map;
         int height;
         int width;
+        List<Lake> lakes = new List<Lake>();
+        Dictionary<int,int> pointToLake = new Dictionary<int, int>(); // Maps point ID to lake ID
         public RiverErosionGen(DBConnection db, IConfiguration config, string parentDirectory)
         {
             this.parentDirectory = parentDirectory;
@@ -117,41 +119,23 @@ namespace FantasyColonialismMapgen
             return;
         }
 
-        private List<Lake> generateLakes(Dictionary<(int, int), Direction> downhillFlowDirection)
+        public void generateLakesWithVolume(Dictionary<(int, int), Direction> downhillFlowDirection)
         {
-            List<Lake> lakes = new List<Lake>();
             //Key: point id
             //Value: whether it has been visited or not
-            Dictionary<int,bool> visited = new Dictionary<int,bool>();
+            HashSet<(int,int)> visited = new HashSet<(int, int)>();
             List<Point> sinkPoints = getPointsWithoutFlowDirection(downhillFlowDirection, map.getListOfPointsByHeight());
+
+            Console.WriteLine($"Found {sinkPoints.Count} sink points to process for lakes.");
+
             foreach (Point sink in sinkPoints)
             {
-                if (visited[sink.Id]) continue;
-                // Determine lake basin by flood-fill up to rim
-                decimal lakeSurfaceHeight = determineLakeFillHeight(sink);
-                Lake newLake = new Lake { surfaceHeight = lakeSurfaceHeight, waterSalinity = 0.0m};//Freshwater
-                Queue<Point> queue = new Queue<Point>();
-                queue.Enqueue(sink);
-                while (queue.Count > 0)
-                {
-                    Point q = queue.Dequeue();
-                    if (visited[q.id]) continue;
-                    visited[q.id] = true;
-                    // Mark this point as part of the lake
-                    newLake.Points.Add(q);
-                    // If q is lower than lake surface, it gets flooded
-                    newLake.depth = Math.Max(newLake.depth, lakeSurfaceHeight - q.height);
-                    // Enqueue neighbors that are below the water surface height (part of basin)
-                    foreach (Point n in q.GetNeighbors8())
-                    {
-                        if (n.land && n.height <= lakeSurfaceHeight)
-                        {
-                            queue.Enqueue(n);
-                        }
-                    }
+                //This sink has already been processed so we may ignore it
+                if (visited.Contains(sink.getCoordinates())){
+                    continue;
                 }
-                lakes.Add(newLake);
-                return lakes;
+
+                Lake lake = floodFillLake(sink, visited);
             }
         }
 
@@ -185,31 +169,138 @@ namespace FantasyColonialismMapgen
             return sinkPoints;
         }
 
-        private int determineLakeFillHeight(Point sink)
+        private Lake floodFillLake(Point sink, HashSet<(int, int)> visited)
         {
-            HashSet<(int,int)> visited = new HashSet<(int, int)>();
+            //Create new priority queue with the priority being the height of the point
             PriorityQueue<Point, int> pointQueue = new PriorityQueue<Point, int>();
-            visited.Add((sink.X, sink.Y));
-            pointQueue.Enqueue(sink, sink.Height);
+            HashSet<(int,int)> basinVisited = new HashSet<(int,int)>();
 
-            //The current water level in meters above sea level
             int currentWaterLevel = sink.Height;
-            //Tracks the lowest boundary height
             int lowestRimHeight = int.MaxValue;
+            Point rimOutflow = null;
 
-            //Iterate while the point queue has points to process
-            while (pointQueue.Count > 0)
+            pointQueue.Enqueue(sink, sink.Height);
+            visited.Add(sink.getCoordinates());
+            basinVisited.Add(sink.getCoordinates());
+
+            List<Point> basinPoints = new List<Point>();
+
+            while(pointQueue.Count > 0)
             {
-                Point currentPoint = pointQueue.Dequeue();
-                //If the current point is lower than the current water level, we should raise the current water level to match it
-                if(currentPoint.Height > currentWaterLevel)
+                Point point = pointQueue.Dequeue();
+
+                if (point.Height > currentWaterLevel)
                 {
-                    currentWaterLevel = currentPoint.Height;
+                    currentWaterLevel = point.Height;
                 }
-                List<Point> neighbors = map.getNeighborsSquare(currentPoint);
+
+                basinPoints.Add(point);
+
+                foreach (Point neighbor in map.getNeighborsSquare(point))
+                {
+                    (int,int) neighborCoords = neighbor.getCoordinates();
+
+                    if (basinVisited.Contains(neighborCoords))
+                    {
+                        continue;
+                    }
+
+                    basinVisited.Add(neighborCoords);
+                    visited.Add(neighborCoords);
+
+                    if (!neighbor.Land)
+                    {
+                        if (neighbor.Height < lowestRimHeight)
+                        {
+                            lowestRimHeight = neighbor.Height;
+                        }
+                        continue;
+                    }
+
+                    if (neighbor.Height <= currentWaterLevel)
+                    {
+                        pointQueue.Enqueue(neighbor, neighbor.Height);
+                    }
+                    else
+                    {
+                        if (neighbor.Height < lowestRimHeight)
+                        {
+                            lowestRimHeight = neighbor.Height;
+                            rimOutflow = neighbor;
+                        }
+                        pointQueue.Enqueue(neighbor, neighbor.Height);
+                    }
+                }
             }
-            return -1;
+            // Calculate inflow
+            double V_in = basinPoints.Sum(c => c.WaterRunoff);
+            if (V_in <= 0.0)
+            {
+                return null;
+            }
+
+            // Calculate capacity to rim
+            double V_rim = basinPoints
+                .Where(c => c.Height < lowestRimHeight)
+                .Sum(c => (double)(lowestRimHeight - c.Height) * c.Area);
+
+            int surfaceHeight;
+            double finalVolume;
+            double outflow;
+            int minHeight = basinPoints.Min(c => c.Height);
+            if (V_in >= V_rim)
+            {
+                surfaceHeight = lowestRimHeight;
+                finalVolume = V_rim;
+                outflow = V_in - V_rim;
+            }
+            else
+            {
+                surfaceHeight = findFillHeight(basinPoints, V_in, minHeight, lowestRimHeight);
+                finalVolume = V_in;
+                outflow = 0.0;
+            }
+
+            Lake lake = new Lake(basinPoints, surfaceHeight, minHeight, outflow, finalVolume);
+
+            if (outflow > 0 && rimOutflow != null)
+            {
+                rimOutflow.WaterRunoff += outflow;
+                lake.OutflowPoint = rimOutflow;
+            }
+
+            return lake;
         }
-        
+
+
+        // Finds the fill height for a partial lake when V_in < V_rim
+        //TODO: Account for porousness of the soil
+        private decimal findFillHeight(List<Point> basinPoints, double V_in, decimal minHeight, int rimHeight)
+        {
+            var sorted = basinPoints.OrderBy(c => c.Height).ToList();
+            double volumeRemaining = V_in;
+            double currentHeight = (double)minHeight;
+
+            for (int i = 1; i <= sorted.Count; i++)
+            {
+                double nextHeight = (i < sorted.Count) ? (double)sorted[i].Height : rimHeight;
+                int cellsBelow = i;
+                double volumeNeeded = (nextHeight - currentHeight) * cellsBelow * sorted.Average(c => c.Area); 
+
+                if (volumeRemaining >= volumeNeeded)
+                {
+                    volumeRemaining -= volumeNeeded;
+                    currentHeight = nextHeight;
+                }
+                else
+                {
+                    currentHeight += volumeRemaining / (cellsBelow * sorted[0].Area);
+                    break;
+                }
+            }
+
+            return (decimal)currentHeight;
+        }
+
     }
 }

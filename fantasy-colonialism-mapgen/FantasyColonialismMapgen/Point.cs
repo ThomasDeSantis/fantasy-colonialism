@@ -42,7 +42,12 @@ namespace FantasyColonialismMapgen
         private double averageRainfall = -1; //Average rainfall in mm/year
 
         private double erosionFactor = 0.5; //Used for river generation. Holds how easily the ground erodes.
-        public double waterRunoff = 0.5; //Used for river generation. Holds the volume of runoff the point receives. Directly accesible as it is purely used by river generation.
+        private double waterRunoff = 0.5; //Used for river generation. Holds the volume of runoff the point receives. Directly accesible as it is purely used by river generation.
+
+
+        int lakeDepth; // Average depth of the lake at this point in meters.  
+        double lakePointAreaPercent; // Percentage of the point that is covered by the lake.  
+        int lakeId; // The ID of the lake this point belongs to.
 
 
         // Getter Properties
@@ -67,6 +72,11 @@ namespace FantasyColonialismMapgen
         public double AverageTemperatureWinter { get => averageTemperatureWinter; }
         public double AverageRainfall { get => averageRainfall; }
         public double ErosionFactor { get => erosionFactor; set => erosionFactor = value; }
+
+        public double WaterRunoff { get => waterRunoff; set => waterRunoff = value; }
+        public int LakeDepth { get => lakeDepth; set => lakeDepth = value; }
+        public double LakePointAreaPercent { get => lakePointAreaPercent; set => lakePointAreaPercent = value; }
+        public int LakeId { get => lakeId; set => lakeId = value; }
 
 
 
@@ -125,6 +135,15 @@ namespace FantasyColonialismMapgen
             this.averageTemperatureSummer = averageTemperatureSummer;
             this.averageTemperatureWinter = averageTemperatureWinter;
             this.averageRainfall = averageRainfall;
+        }
+
+        //Used for lake point constructor
+        public Point(int x, int y, int id, int height)
+        {
+            this.x = x;
+            this.y = y;
+            this.id = id;
+            this.height = height;
         }
 
         private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
@@ -653,6 +672,12 @@ namespace FantasyColonialismMapgen
                 default:
                     return PointType.undefined;
             }
+        }
+
+        //Returns x y tuple
+        public (int,int) getCoordinates()
+        {
+            return (x, y);
         }
 
     }

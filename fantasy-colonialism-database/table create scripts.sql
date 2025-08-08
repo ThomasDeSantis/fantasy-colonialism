@@ -108,8 +108,8 @@ CREATE TABLE "Lakes" (
     id SERIAL PRIMARY KEY,
     name varchar(255) NULL,
     waterSalinity decimal(3,1) NULL, -- The percentage of salt in the water.
-    surfaceHeight numeric NULL, -- Height of the lake surface in meters above sea level.
-    depth numeric NULL -- Depth of the lake in meters.
+    lakeRimHeight numeric NULL, -- Height of the lake surface in meters above sea level.
+    lakeBedHeight numeric NULL -- Depth of the lake in meters.
 
 );
 
