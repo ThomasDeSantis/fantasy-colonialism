@@ -99,7 +99,7 @@ namespace FantasyColonialismMapgen
                 // rainfall (mm/year) -> m/year by dividing 1000, then to m^3/sec:
                 double rainVolumePerYear = (p.AverageRainfall / 1000.0) * p.Area; // m^3 of water per year
                 double rainVolumePerSecond = rainVolumePerYear / (365 * 24 * 3600);
-                p.waterRunoff = rainVolumePerSecond;
+                p.WaterRunoff = rainVolumePerSecond;
             }
 
             //Now we need to carry the water down to its downhill neighbor
@@ -112,14 +112,14 @@ namespace FantasyColonialismMapgen
                 {
                     Point dP = map.getPointInDirection(p.X, p.Y, dir);
                     // pass all its water to the downhill neighbor
-                    dP.waterRunoff += p.waterRunoff;
+                    dP.WaterRunoff += p.WaterRunoff;
                 }
             }
 
             return;
         }
 
-        public void generateLakesWithVolume(Dictionary<(int, int), Direction> downhillFlowDirection)
+        public List<Lake> generateLakesWithVolume(Dictionary<(int, int), Direction> downhillFlowDirection)
         {
             //Key: point id
             //Value: whether it has been visited or not
@@ -128,6 +128,8 @@ namespace FantasyColonialismMapgen
 
             Console.WriteLine($"Found {sinkPoints.Count} sink points to process for lakes.");
 
+            List<Lake> lakeList = new List<Lake>();
+
             foreach (Point sink in sinkPoints)
             {
                 //This sink has already been processed so we may ignore it
@@ -135,8 +137,10 @@ namespace FantasyColonialismMapgen
                     continue;
                 }
 
-                Lake lake = floodFillLake(sink, visited);
+                lakeList.Add(floodFillLake(sink, visited));
             }
+
+            return lakeList;
         }
 
         private List<(int,int)> queryPointsByHeight(DBConnection db)
@@ -275,11 +279,11 @@ namespace FantasyColonialismMapgen
 
         // Finds the fill height for a partial lake when V_in < V_rim
         //TODO: Account for porousness of the soil
-        private decimal findFillHeight(List<Point> basinPoints, double V_in, decimal minHeight, int rimHeight)
+        private int findFillHeight(List<Point> basinPoints, double V_in, int minHeight, int rimHeight)
         {
             var sorted = basinPoints.OrderBy(c => c.Height).ToList();
             double volumeRemaining = V_in;
-            double currentHeight = (double)minHeight;
+            int currentHeight = minHeight;
 
             for (int i = 1; i <= sorted.Count; i++)
             {
@@ -299,7 +303,7 @@ namespace FantasyColonialismMapgen
                 }
             }
 
-            return (decimal)currentHeight;
+            return currentHeight;
         }
 
     }
