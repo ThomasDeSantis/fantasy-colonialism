@@ -16,6 +16,7 @@ namespace FantasyColonialismMapgen
         private bool land;
         private float waterSalinity = -1;
         private PointType type = PointType.undefined;
+        private TerrainType terrainType = TerrainType.undefined;
         private int provinceId = -1;
         private int id = -1;//The database id on the Points table
         private int worldPointId = -1;//The database id on the WorldPoints table
@@ -42,8 +43,23 @@ namespace FantasyColonialismMapgen
         private double averageRainfall = -1; //Average rainfall in mm/year
 
         private double erosionFactor = 0.5; //Used for river generation. Holds how easily the ground erodes.
-        public double waterRunoff = 0.5; //Used for river generation. Holds the volume of runoff the point receives. Directly accesible as it is purely used by river generation.
+        private double waterRunoff = 0.5; //Used for river generation. Holds the volume of runoff the point receives. Directly accesible as it is purely used by river generation.
 
+
+        int lakeDepth; // Average depth of the lake at this point in meters.  
+        double lakePointAreaPercent; // Percentage of the point that is covered by the lake.  
+        int lakeId = -1; // The ID of the lake this point belongs to.
+
+
+        int riverId = -1;
+        int riverLastIteration = -1; // The last iteration of the river generation algorithm that this point was used in.
+        double riverVolume = -1; // Volume of water in the river at this point in cubic meters per second.
+        double riverDepth = -1; // Depth of the river at this point in meters.
+        double riverWidth = -1; // Width of the river at this point in meters.
+        double riverAverageSteepness = -1; // Average steepness of the river at this point, used for river generation and erosion calculations.
+        double rockiness = -1; // Rockiness of the point, used for river generation and erosion calculations. This is a value between 0 and 1, where 0 is no rockiness and 1 is maximum rockiness.
+        double riverRockiness = -1; //Rockiness of the river in the point
+        double riverErosionVolume = -1; // Volume of erosion caused by the river
 
         // Getter Properties
         public int Id { get => id; }
@@ -53,6 +69,7 @@ namespace FantasyColonialismMapgen
         public bool Land { get => land; }
         public float WaterSalinity { get => waterSalinity; }
         public PointType Type { get => type; }
+        public TerrainType TerrainType { get => terrainType; }
         public int ProvinceId { get => provinceId; }
         public double Latitude { get => latitude; }
         public double Longitude { get => longitude; }
@@ -67,6 +84,22 @@ namespace FantasyColonialismMapgen
         public double AverageTemperatureWinter { get => averageTemperatureWinter; }
         public double AverageRainfall { get => averageRainfall; }
         public double ErosionFactor { get => erosionFactor; set => erosionFactor = value; }
+
+        public double WaterRunoff { get => waterRunoff; set => waterRunoff = value; }
+        public int LakeDepth { get => lakeDepth; set => lakeDepth = value; }
+        public double LakePointAreaPercent { get => lakePointAreaPercent; set => lakePointAreaPercent = value; }
+        public int LakeId { get => lakeId; set => lakeId = value; }
+
+        public int RiverId { get => riverId; set => riverId = value; }
+        public double RiverDepth { get => riverDepth; set => riverDepth = value; }
+        public double RiverWidth { get => riverWidth; set => riverWidth = value; }
+        public double RiverAverageSteepness { get => riverAverageSteepness; set => riverAverageSteepness = value; }
+        public double Rockiness { get => rockiness; set => rockiness = value; }
+        public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
+        public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
+        public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
+
+
 
 
 
@@ -103,7 +136,7 @@ namespace FantasyColonialismMapgen
         //Used for generating points with all properties
         public Point(int id, int worldPointId, int x, int y, bool land, float waterSalinity, PointType type, int provinceId,
                      double latitude, double longitude, double coastalDistance, int width, int length, int area, int height,
-                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall)
+                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall, TerrainType terrainType)
         {
             this.id = id;
             this.worldPointId = worldPointId;
@@ -125,6 +158,7 @@ namespace FantasyColonialismMapgen
             this.averageTemperatureSummer = averageTemperatureSummer;
             this.averageTemperatureWinter = averageTemperatureWinter;
             this.averageRainfall = averageRainfall;
+            this.terrainType = terrainType;
         }
 
         private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
@@ -655,6 +689,27 @@ namespace FantasyColonialismMapgen
             }
         }
 
+        public static TerrainType stringToTerrainType(string typeString)
+        {
+            switch (typeString.ToLower())
+            {
+                case "flatland":
+                    return TerrainType.flatland;
+                case "hills":
+                    return TerrainType.hills;
+                case "mountains":
+                    return TerrainType.mountains;
+                default:
+                    return TerrainType.undefined;
+            }
+        }
+
+        //Returns x y tuple
+        public (int,int) getCoordinates()
+        {
+            return (x, y);
+        }
+
     }
 
     enum PointType{
@@ -662,6 +717,14 @@ namespace FantasyColonialismMapgen
         land = 1,
         ocean = 2,
         lake = 3,
+    }
+
+    enum TerrainType
+    {
+        undefined = 0,
+        flatland = 1,
+        hills = 2,
+        mountains  = 3
     }
 
 }
