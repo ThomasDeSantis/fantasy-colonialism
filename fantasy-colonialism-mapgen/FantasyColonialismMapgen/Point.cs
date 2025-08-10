@@ -98,14 +98,6 @@ namespace FantasyColonialismMapgen
         public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
         public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
         public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
-        public int RiverId { get => riverId; set => riverId = value; }
-        public double RiverDepth { get => riverDepth; set => riverDepth = value; }
-        public double RiverWidth { get => riverWidth; set => riverWidth = value; }
-        public double RiverAverageSteepness { get => riverAverageSteepness; set => riverAverageSteepness = value; }
-        public double Rockiness { get => rockiness; set => rockiness = value; }
-        public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
-        public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
-        public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
 
 
 
