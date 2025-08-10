@@ -8,9 +8,9 @@ namespace FantasyColonialismMapgen
 {
     class Lake
     {
-        private int id;//The ID of the lake.
         //All points within the lake including
         List<Point> lakePoints;
+        private int id;
         private float waterSalinity = .07f;//Stub
         private int lakeRimHeight;
         private int lakeBedHeight;
@@ -30,7 +30,7 @@ namespace FantasyColonialismMapgen
 
 
 
-        public Lake(List<Point> lakePoints, int lakeRimHeight, int lakeBedHeight, double outflowVolumePerSecond, double volume)
+        public Lake(int id, List<Point> lakePoints, int lakeRimHeight, int lakeBedHeight, double outflowVolumePerSecond, double volume)
         {
             this.id = id;
             this.lakePoints = lakePoints;

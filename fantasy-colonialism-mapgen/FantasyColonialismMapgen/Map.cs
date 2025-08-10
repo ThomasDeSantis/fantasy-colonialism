@@ -20,7 +20,7 @@ namespace FantasyColonialismMapgen
             height = db.getIntFromQuery("SELECT MAX(y) FROM \"Points\";") + 1;
 
 
-            string query = "SELECT p1.id, p1.worldPointId, p1.x, p1.y, p1.land, p1.waterSalinity, p1.provinceId, p1.latitude, p1.longitude, p1.coastalDistance, p1.width, p1.length, p1.area, p1.height, p1.summerSolsticeAverageTemperature, p1.winterSolsticeAverageTemperature, p1.averageRainfall, p1.type  FROM \"Points\" p1 order by X,Y;";
+            string query = "SELECT p1.id, p1.worldPointId, p1.x, p1.y, p1.land, p1.waterSalinity, p1.provinceId, p1.latitude, p1.longitude, p1.coastalDistance, p1.width, p1.length, p1.area, p1.height, p1.summerSolsticeAverageTemperature, p1.winterSolsticeAverageTemperature, p1.averageRainfall, p1.type, p1.terraintype  FROM \"Points\" p1 order by X,Y;";
             pointMap = new Point[height][];
             for (int i = 0; i < height; i++)
             {
@@ -52,7 +52,9 @@ namespace FantasyColonialismMapgen
                 double winterSolsticeAverageTemperature = !rdr.IsDBNull(15) ? rdr.GetDouble(15) : -1.0;
                 double averageRainfall = !rdr.IsDBNull(16) ? rdr.GetDouble(16) : -1.0;
                 PointType type = !rdr.IsDBNull(17) ? Point.stringToPointType(rdr.GetString(17)) : PointType.undefined;
-                pointMap[y][x] = new Point(id, worldPointId, x, y, land, waterSalinity, type, provinceId, latitude, longitude, coastalDistance, widthVal, length, area, heightVal, summerSolsticeAverageTemperature, winterSolsticeAverageTemperature, averageRainfall);
+                TerrainType terrainType = !rdr.IsDBNull(18) ? Point.stringToTerrainType(rdr.GetString(18)) : TerrainType.undefined;
+
+                pointMap[y][x] = new Point(id, worldPointId, x, y, land, waterSalinity, type, provinceId, latitude, longitude, coastalDistance, widthVal, length, area, heightVal, summerSolsticeAverageTemperature, winterSolsticeAverageTemperature, averageRainfall, terrainType);
                 if (x == 700 && (y % 100) == 0)
                 {
                     Console.WriteLine(pointMap[y][x]);
@@ -74,6 +76,12 @@ namespace FantasyColonialismMapgen
         public List<Point> getNeighborsPlus(int x, int y)
         {
             var points = Point.getNeighborsPlusSafe((x, y), width, height);
+            return points.Select(p => getPoint(p.Item1, p.Item2)).ToList();
+        }
+
+        public List<Point> getNeighborsPlus(Point p)
+        {
+            var points = Point.getNeighborsPlusSafe((p.X, p.Y), width, height);
             return points.Select(p => getPoint(p.Item1, p.Item2)).ToList();
         }
 
