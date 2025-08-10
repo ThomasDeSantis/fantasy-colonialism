@@ -16,6 +16,7 @@ namespace FantasyColonialismMapgen
         private bool land;
         private float waterSalinity = -1;
         private PointType type = PointType.undefined;
+        private TerrainType terrainType = TerrainType.undefined;
         private int provinceId = -1;
         private int id = -1;//The database id on the Points table
         private int worldPointId = -1;//The database id on the WorldPoints table
@@ -47,8 +48,18 @@ namespace FantasyColonialismMapgen
 
         int lakeDepth; // Average depth of the lake at this point in meters.  
         double lakePointAreaPercent; // Percentage of the point that is covered by the lake.  
-        int lakeId; // The ID of the lake this point belongs to.
+        int lakeId = -1; // The ID of the lake this point belongs to.
 
+
+        int riverId = -1;
+        int riverLastIteration = -1; // The last iteration of the river generation algorithm that this point was used in.
+        double riverVolume = -1; // Volume of water in the river at this point in cubic meters per second.
+        double riverDepth = -1; // Depth of the river at this point in meters.
+        double riverWidth = -1; // Width of the river at this point in meters.
+        double riverAverageSteepness = -1; // Average steepness of the river at this point, used for river generation and erosion calculations.
+        double rockiness = -1; // Rockiness of the point, used for river generation and erosion calculations. This is a value between 0 and 1, where 0 is no rockiness and 1 is maximum rockiness.
+        double riverRockiness = -1; //Rockiness of the river in the point
+        double riverErosionVolume = -1; // Volume of erosion caused by the river
 
         // Getter Properties
         public int Id { get => id; }
@@ -58,6 +69,7 @@ namespace FantasyColonialismMapgen
         public bool Land { get => land; }
         public float WaterSalinity { get => waterSalinity; }
         public PointType Type { get => type; }
+        public TerrainType TerrainType { get => terrainType; }
         public int ProvinceId { get => provinceId; }
         public double Latitude { get => latitude; }
         public double Longitude { get => longitude; }
@@ -77,6 +89,28 @@ namespace FantasyColonialismMapgen
         public int LakeDepth { get => lakeDepth; set => lakeDepth = value; }
         public double LakePointAreaPercent { get => lakePointAreaPercent; set => lakePointAreaPercent = value; }
         public int LakeId { get => lakeId; set => lakeId = value; }
+
+        public int RiverId { get => riverId; set => riverId = value; }
+        public double RiverDepth { get => riverDepth; set => riverDepth = value; }
+        public double RiverWidth { get => riverWidth; set => riverWidth = value; }
+        public double RiverAverageSteepness { get => riverAverageSteepness; set => riverAverageSteepness = value; }
+        public double Rockiness { get => rockiness; set => rockiness = value; }
+        public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
+        public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
+        public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
+        public int RiverId { get => riverId; set => riverId = value; }
+        public double RiverDepth { get => riverDepth; set => riverDepth = value; }
+        public double RiverWidth { get => riverWidth; set => riverWidth = value; }
+        public double RiverAverageSteepness { get => riverAverageSteepness; set => riverAverageSteepness = value; }
+        public double Rockiness { get => rockiness; set => rockiness = value; }
+        public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
+        public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
+        public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
+
+
+
+
+
 
 
 
@@ -113,7 +147,7 @@ namespace FantasyColonialismMapgen
         //Used for generating points with all properties
         public Point(int id, int worldPointId, int x, int y, bool land, float waterSalinity, PointType type, int provinceId,
                      double latitude, double longitude, double coastalDistance, int width, int length, int area, int height,
-                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall)
+                     double averageTemperatureSummer, double averageTemperatureWinter, double averageRainfall, TerrainType terrainType)
         {
             this.id = id;
             this.worldPointId = worldPointId;
@@ -135,6 +169,7 @@ namespace FantasyColonialismMapgen
             this.averageTemperatureSummer = averageTemperatureSummer;
             this.averageTemperatureWinter = averageTemperatureWinter;
             this.averageRainfall = averageRainfall;
+            this.terrainType = terrainType;
         }
 
         //Used for lake point constructor
@@ -144,6 +179,7 @@ namespace FantasyColonialismMapgen
             this.y = y;
             this.id = id;
             this.height = height;
+            this.terrainType = terrainType;
         }
 
         private static double degreesToRadians(double deg) => deg * Math.PI / 180.0;
@@ -204,7 +240,7 @@ namespace FantasyColonialismMapgen
         }
 
         //Returns coordinates of the neighbors of a point in a x shape
-        public static List<(int, int)> getNeighborsX((int,int) point)
+        public static List<(int, int)> getNeighborsX((int, int) point)
         {
             int x = point.Item1;
             int y = point.Item2;
@@ -452,13 +488,13 @@ namespace FantasyColonialismMapgen
         //Searches for neighbors that are valid points in a plus pattern  
         //If plus == true then search using the getNeighborsPlus pattern  
         //Returns a province id if there is at least one valid province, returns -1 if there are no valid provinces  
-        public static int getNeighborValidPoint(Dictionary<(int,int),int> validPoints, (int, int) point)
+        public static int getNeighborValidPoint(Dictionary<(int, int), int> validPoints, (int, int) point)
         {
             //string query = $"SELECT provinceId from  Points WHERE (x = (@x + 1) AND y = @y) OR (x = (@x - 1) AND y = @y) OR (x = @x AND y = (@y + 1)) OR (x = @x AND y = (@y - 1)) AND land = true;";
             List<int> provinces = new List<int>();
 
             //Retrieve the north,east,south, and west province ids by referencing the dictionary
-            if (validPoints.ContainsKey((point.Item1,point.Item2 - 1)))
+            if (validPoints.ContainsKey((point.Item1, point.Item2 - 1)))
             {
                 provinces.Add(validPoints[(point.Item1, point.Item2 - 1)]);
             }
@@ -476,7 +512,7 @@ namespace FantasyColonialismMapgen
             }
 
             //If there are no provinces, then you should leave it alone.
-            if(provinces.Count == 0)
+            if (provinces.Count == 0)
             {
                 return -1;
             }
@@ -487,7 +523,7 @@ namespace FantasyColonialismMapgen
         }
 
         //Write each line of a point list
-        public static void outputPointList(List<(int,int)> points)
+        public static void outputPointList(List<(int, int)> points)
         {
             Console.WriteLine("Points.\n");
             foreach ((int, int) point in points)
@@ -497,7 +533,7 @@ namespace FantasyColonialismMapgen
             Console.WriteLine("End of points.\n");
         }
 
-        public static Dictionary<(int,int), int> retrieveAllValidLandPoints(DBConnection database)
+        public static Dictionary<(int, int), int> retrieveAllValidLandPoints(DBConnection database)
         {
             string query = "SELECT x, y, provinceId FROM \"Points\" WHERE land = true and provinceId IS NOT NULL";
             NpgsqlDataReader rdr = database.runQueryCommand(query);
@@ -523,7 +559,7 @@ namespace FantasyColonialismMapgen
 
             foreach (var point in points)
             {
-                double distance = calculateHaversineDistance(latRadians, lonRadians, point.LatitudeRadians, point.LongitudeRadians,true);
+                double distance = calculateHaversineDistance(latRadians, lonRadians, point.LatitudeRadians, point.LongitudeRadians, true);
 
                 if (distance < minDistance)
                 {
@@ -556,7 +592,7 @@ namespace FantasyColonialismMapgen
 
             if (KM)
             {
-                return (R * c)/1000.0;
+                return (R * c) / 1000.0;
             }
             else
             {
@@ -573,7 +609,8 @@ namespace FantasyColonialismMapgen
                 if (x == -1 && y == -1)
                 {
                     stringBuilder.AppendLine($"Point ({x},{y}):\n");
-                } else if (x == -1 && y == -1)
+                }
+                else if (x == -1 && y == -1)
                 {
                     stringBuilder.AppendLine($"Point ({x},{y}):\n");
                 }
@@ -583,9 +620,9 @@ namespace FantasyColonialismMapgen
                 }
             }
             //Output id
-            if(id != -1 || worldPointId != -1)
+            if (id != -1 || worldPointId != -1)
             {
-                if(id == -1)
+                if (id == -1)
                 {
                     stringBuilder.AppendLine($"WorldPointId:{worldPointId}");
                 }
@@ -596,13 +633,13 @@ namespace FantasyColonialismMapgen
                 else
                 {
                     stringBuilder.AppendLine($"Id:{id}|{worldPointId}");
-                }               
+                }
             }
-            if(PointType.undefined != type)
+            if (PointType.undefined != type)
             {
                 stringBuilder.AppendLine($"Type:{getTerrainDescription()}");
             }
-            if(coastalDistance != -1)
+            if (coastalDistance != -1)
             {
                 stringBuilder.AppendLine($"Coastal Distance:{coastalDistance} km");
             }
@@ -614,11 +651,11 @@ namespace FantasyColonialismMapgen
             {
                 stringBuilder.AppendLine($"Height:{height} m above sea level");
             }
-            if(averageTemperatureSummer != -1 || averageTemperatureWinter != -1)
+            if (averageTemperatureSummer != -1 || averageTemperatureWinter != -1)
             {
                 stringBuilder.AppendLine($"Average Temperature Summer:{averageTemperatureSummer} C Winter:{averageTemperatureWinter} C");
-            } 
-            if(averageRainfall != -1)
+            }
+            if (averageRainfall != -1)
             {
                 stringBuilder.AppendLine($"Average Rainfall:{averageRainfall} mm/year");
             }
@@ -631,7 +668,7 @@ namespace FantasyColonialismMapgen
             switch (type)
             {
                 case PointType.land:
-                    if(coastalDistance == 0)
+                    if (coastalDistance == 0)
                     {
                         return "Coastline";
                     }
@@ -674,19 +711,43 @@ namespace FantasyColonialismMapgen
             }
         }
 
+        public static TerrainType stringToTerrainType(string typeString)
+        {
+            switch (typeString.ToLower())
+            {
+                case "flatland":
+                    return TerrainType.flatland;
+                case "hills":
+                    return TerrainType.hills;
+                case "mountains":
+                    return TerrainType.mountains;
+                default:
+                    return TerrainType.undefined;
+            }
+        }
+
         //Returns x y tuple
-        public (int,int) getCoordinates()
+        public (int, int) getCoordinates()
         {
             return (x, y);
         }
 
     }
 
-    enum PointType{
+    enum PointType
+    {
         undefined = 0,
         land = 1,
         ocean = 2,
         lake = 3,
+    }
+
+    enum TerrainType
+    {
+        undefined = 0,
+        flatland = 1,
+        hills = 2,
+        mountains = 3
     }
 
 }
