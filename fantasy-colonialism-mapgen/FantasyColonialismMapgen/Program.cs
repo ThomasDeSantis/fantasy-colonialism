@@ -44,8 +44,8 @@ if (dbCon.IsConnect(connectionString))
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
     //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png", config);
 
-    BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
-    biomeGenerator.generateBiomes(dbCon);
+    //BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
+    //biomeGenerator.generateBiomes(dbCon);
     
     //RiverErosionGen riverGen = new RiverErosionGen(dbCon, config, parentDirectory + "\\Maps\\");
     //riverGen.generateRiversAndLakes(dbCon);
