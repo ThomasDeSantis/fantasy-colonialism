@@ -25,6 +25,7 @@ namespace FantasyColonialismMapgen
         List<Lake> lakes = new List<Lake>();
         List<River> rivers = new List<River>();
         Dictionary<int,int> pointToLake = new Dictionary<int, int>(); // Maps point ID to lake ID
+        Random r = new Random();
         public RiverErosionGen(DBConnection db, IConfiguration config, string parentDirectory)
         {
             this.parentDirectory = parentDirectory;
@@ -331,6 +332,9 @@ namespace FantasyColonialismMapgen
             List<Point> pointsOrderedByHeight = map.getListOfPointsByHeight(); 
             foreach (Point point in pointsOrderedByHeight)
             {
+                Point priorPoint = null;
+                Point currentPoint = point;
+                Point nextPoint = null;
                 //If point is land and has a downhill flow direction, it may be a river source
                 if (point.Land && point.LakeId == -1 && point.RiverId == -1 && isHeadwater(point, downhillFlowDirection))
                 {
@@ -362,14 +366,23 @@ namespace FantasyColonialismMapgen
                             newRiver.addRiverPoint(point);
                             point.RiverId = newRiver.Id;
                             point.RiverLastIteration = iteration;
+                            if (nextPoint == null)
+                            {
+                                nextPoint = map.getPointInDirection(currentPoint.X, currentPoint.Y, downhillFlowDirection[(currentPoint.X, currentPoint.Y)]);
+                            }
+                            point.RiverSlope = calculateRiverSlope(currentPoint, nextPoint);
+                            currentPoint.Upstream = priorPoint;
+                            currentPoint.Downstream = nextPoint;
                             if (iteration == 0)
                             {
-                                //point.Riv
+                                currentPoint.RiverRockiness = terrainTypeToInitialRiverRockiness(currentPoint.TerrainType, r);
                             }
 
+                            priorPoint = currentPoint;
+                            currentPoint = nextPoint;
+                            nextPoint = map.getPointInDirection(currentPoint.X, currentPoint.Y, downhillFlowDirection[(currentPoint.X, currentPoint.Y)]);
                         }
                     }
-
                 }
             }
         }
@@ -394,6 +407,55 @@ namespace FantasyColonialismMapgen
                 return false; // Not a headwater if water runoff is not negative or it has neighbors flowing into it
             }
         }
+
+        //Sets an initial value for the river rockiness based on the terrain type
+        //TODO: Make this extendable via configuration
+        private double terrainTypeToInitialRiverRockiness(TerrainType t,Random r)
+        {
+            double rVal = r.NextDouble() * (0.8 - 1.4) + .8; // Random value between 0.8 and 1.4 for rockiness variation, minor tendancy to go over 1 on mountains is intentional. Logic on other types is for if the values are adjusted such they could possibly go over 1
+            double baseRoughness;
+            switch (t)
+            {
+                case TerrainType.mountains:
+                    baseRoughness = (0.8 * rVal); // High rockiness in mountains
+                    break;
+                case TerrainType.hills:
+                    baseRoughness = (0.6 * rVal); // Med - high rockiness in hills
+                    break;
+                case TerrainType.flatland:
+                    baseRoughness = (0.3 * rVal); // Low rockiness in flatlands
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown terrain type: {t}");
+            }
+
+            return baseRoughness > 1.0 ? 1.0 : baseRoughness; // Cap at 1.0
+        }
+
+        //Calculates the slope between two points.
+        //Uses the point's current point and next point
+        //Returns value between 0 and 90 degrees
+        public double calculateRiverSlope(Point currentPoint, Point nextPoint)
+        {
+            // Elevation change (rise) in meters
+            double rise = currentPoint.Height - nextPoint.Height;
+
+            // Horizontal distance (run) in meters
+            // Uses the point's length (E/W) and width (N/S) fields for accurate distance
+            double dx = (double)((nextPoint.X - currentPoint.X) * (currentPoint.Length));
+            double dy = (double)(nextPoint.Y - currentPoint.Y) * (currentPoint.Width);
+
+            double run = Math.Sqrt(dx * dx + dy * dy);
+
+            // Avoid division by zero
+            if (run <= 0.0)
+                return 0.0;
+
+            double slopeGradient = rise / run; // e.g., 0.01 means 1% slope
+            return Math.Atan(slopeGradient) * (180.0 / Math.PI);
+        }
+
+
 
     }
 }

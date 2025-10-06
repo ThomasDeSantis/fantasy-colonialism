@@ -60,6 +60,9 @@ namespace FantasyColonialismMapgen
         double rockiness = -1; // Rockiness of the point, used for river generation and erosion calculations. This is a value between 0 and 1, where 0 is no rockiness and 1 is maximum rockiness.
         double riverRockiness = -1; //Rockiness of the river in the point
         double riverErosionVolume = -1; // Volume of erosion caused by the river
+        double riverSlope = -1;
+        Point upstream;
+        Point downstream;
 
         // Getter Properties
         public int Id { get => id; }
@@ -98,7 +101,9 @@ namespace FantasyColonialismMapgen
         public double RiverRockiness { get => riverRockiness; set => riverRockiness = value; }
         public double RiverErosionVolume { get => riverErosionVolume; set => riverErosionVolume = value; }
         public int RiverLastIteration { get => riverLastIteration; set => riverLastIteration = value; }
-
+        public double RiverSlope { get => riverSlope; set => riverSlope = value; }
+        public Point Upstream { get => upstream; set => upstream = value; }
+        public Point Downstream { get => downstream; set => downstream = value; }
 
 
 
