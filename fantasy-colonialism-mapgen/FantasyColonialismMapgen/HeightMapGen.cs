@@ -515,7 +515,7 @@ namespace FantasyColonialismMapgen
         //Is redundant but the intent is for the points table to be queried much more often than world points
         public static void writeElevationsToDbPoints(DBConnection db)
         {
-            string query = "SELECT p1.id, p2.height FROM \"Points\" p1 JOIN \"WorldPoints\" p2 on p1.worldPointId = p2.id;";
+            string query = "SELECT p1.id, p2.height, p2.terrainType FROM \"Points\" p1 JOIN \"WorldPoints\" p2 on p1.worldPointId = p2.id;";
             NpgsqlDataReader rdr = db.runQueryCommand(query);
 
             List<string> batchHeightUpdateRow = new List<string>();
@@ -523,7 +523,8 @@ namespace FantasyColonialismMapgen
             {
                 int id = rdr.GetInt32(0);
                 int height = rdr.GetInt32(1);
-                batchHeightUpdateRow.Add(string.Format("UPDATE \"Points\" SET height = {0} WHERE id = {1}", height.ToString(), id.ToString()));
+                string terrainType = rdr.GetString(2);
+                batchHeightUpdateRow.Add(string.Format("UPDATE \"Points\" SET height = {0}, terrainType = {1} WHERE id = {2}", height.ToString(), DBConnection.singleQuoteString(terrainType), id.ToString()));
             }
             rdr.Close();
 
@@ -533,7 +534,7 @@ namespace FantasyColonialismMapgen
             }
             else
             {
-                throw new Exception("No points found to update heights for in the Points table. Please ensure entire.");
+                throw new Exception("No points found to update heights for in the Points table.");
             }
         }
 

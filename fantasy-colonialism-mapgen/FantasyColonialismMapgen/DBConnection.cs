@@ -193,5 +193,10 @@ namespace FantasyColonialismMapgen
             reader.Close();
             return val;
         }
+
+        public static string singleQuoteString(string s)
+        {
+            return "'" + s + "'";
+        }
     }
 }

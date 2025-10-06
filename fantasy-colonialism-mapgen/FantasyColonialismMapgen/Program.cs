@@ -39,16 +39,18 @@ if (dbCon.IsConnect(connectionString))
 
     //SVGRenderer.renderEdges(dbCon, parentDirectory + "\\sf-continent-4.svg");
     //SVGRenderer.updatePolygonToPath( parentDirectory + "\\sf-continent-4.svg", parentDirectory + "\\sf-continent-5.svg");
-
-   // HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
+    
+    HeightMapGen.generateHeightMap(dbCon, config,parentDirectory, "\\Maps\\base-continent-heightmap.png");
     //HeightMapGen.writeElevationsToDbPoints(dbCon);
-    //HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png", config);
+    HeightMapGen.renderViewHeightmap(dbCon, parentDirectory + "\\Maps\\view-heightmap.png", config);
 
     //BiomeGen biomeGenerator = new BiomeGen(dbCon, config, parentDirectory + "\\Maps\\");
     //biomeGenerator.generateBiomes(dbCon);
-    
+
     //RiverErosionGen riverGen = new RiverErosionGen(dbCon, config, parentDirectory + "\\Maps\\");
     //riverGen.generateRiversAndLakes(dbCon);
+
+
 
     dbCon.Close();
 }

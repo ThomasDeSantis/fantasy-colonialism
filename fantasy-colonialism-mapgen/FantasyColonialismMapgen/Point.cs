@@ -219,6 +219,7 @@ namespace FantasyColonialismMapgen
             ).ToList();
         }
 
+
         public List<(int, int)> getNeighborsPlusSafe(int width, int height)
         {
             var neighbors = new List<(int, int)>
