@@ -395,6 +395,5 @@ namespace FantasyColonialismMapgen
             }
         }
 
->>>>>>> Stashed changes
     }
 }
