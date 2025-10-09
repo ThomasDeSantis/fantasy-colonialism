@@ -9,9 +9,6 @@ namespace FantasyColonialismMapgen
     class Lake
     {
         //All points within the lake including
-<<<<<<< Updated upstream
-        List<LakePoint> lakePoints;
-=======
         List<Point> lakePoints;
         private float waterSalinity = .07f;//Stub
         private int lakeRimHeight;
@@ -19,6 +16,7 @@ namespace FantasyColonialismMapgen
         private double outflowVolumePerSecond;
         private double volume;
         private Point outflowPoint;//The point from which the lake outflows.
+        private int id;
 
 
         public int Id { get => id; set => id = value;  }
@@ -47,6 +45,5 @@ namespace FantasyColonialismMapgen
             return lakeRimHeight - lakeBedHeight;
         }
 
->>>>>>> Stashed changes
     }
 }

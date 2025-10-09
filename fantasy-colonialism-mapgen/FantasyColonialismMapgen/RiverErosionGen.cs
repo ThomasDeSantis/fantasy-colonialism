@@ -12,23 +12,17 @@ namespace FantasyColonialismMapgen
         string parentDirectory;
         IConfiguration config;
         Map map;
-<<<<<<< Updated upstream
-=======
         int height;
         int width;
         List<Lake> lakes = new List<Lake>();
         List<River> rivers = new List<River>();
         Random r;
         Dictionary<int,int> pointToLake = new Dictionary<int, int>(); // Maps point ID to lake ID
->>>>>>> Stashed changes
         public RiverErosionGen(DBConnection db, IConfiguration config, string parentDirectory)
         {
             this.parentDirectory = parentDirectory;
             this.config = config;
             map = new Map(db);
-<<<<<<< Updated upstream
-        }
-=======
 
             height = map.height;
             width = map.width;
