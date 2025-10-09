@@ -53,3 +53,7 @@ fantasy-colonialism-backend/.vs
 *.bak
 
 /fantasy-colonialism-mapgen/.vs/
+
+# Godot 4+ specific ignores
+.godot/
+/android/

@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3 uid="uid://j61d8qj4spu"]
+
+[ext_resource type="Texture2D" uid="uid://damrrfye50ns4" path="res://assets/chiaroscuro-hexmap.png" id="1_0ugm7"]
+[ext_resource type="Script" uid="uid://cew4027pddh4" path="res://GlobalEvents.gd" id="1_uuaxm"]
+[ext_resource type="Script" uid="uid://bbdfjraawnc2p" path="res://ChCameraInput.gd" id="4_c3an2"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0ugm7"]
+texture = ExtResource("1_0ugm7")
+texture_region_size = Vector2i(128, 111)
+0:0/0 = 0
+0:1/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_g245i"]
+tile_shape = 3
+tile_offset_axis = 1
+tile_size = Vector2i(128, 111)
+sources/0 = SubResource("TileSetAtlasSource_0ugm7")
+
+[node name="Parent" type="Node2D"]
+script = ExtResource("1_uuaxm")
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+tile_set = SubResource("TileSet_g245i")
+
+[node name="Input" type="Node2D" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="Input"]
+position = Vector2(576, 324)
+script = ExtResource("4_c3an2")
+min_zoom = null
+max_zoom = null
+zoom_factor = null
+zoom_duration = null
