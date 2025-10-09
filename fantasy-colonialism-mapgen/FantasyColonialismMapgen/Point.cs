@@ -101,9 +101,12 @@ namespace FantasyColonialismMapgen
 
 
 
+<<<<<<< Updated upstream
 
 
 
+=======
+>>>>>>> Stashed changes
 
 
         //Used for generating water points
