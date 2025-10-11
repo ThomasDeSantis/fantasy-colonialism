@@ -1,22 +1,19 @@
 [gd_scene load_steps=6 format=3 uid="uid://j61d8qj4spu"]
 
-[ext_resource type="Texture2D" uid="uid://c4pq4i08voexv" path="res://assets/chiaroscuro-hexmap.png" id="1_0ugm7"]
 [ext_resource type="Script" uid="uid://dpyr14qxjqc0l" path="res://scripts/ChRenderHexGrid.gd" id="1_uuaxm"]
+[ext_resource type="Texture2D" uid="uid://ctu7t1lpbal8t" path="res://assets/hex-bounds.png" id="2_uuaxm"]
 [ext_resource type="Script" path="res://scripts/ChCameraInput.gd" id="3_c3an2"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_uuaxm"]
-texture = ExtResource("1_0ugm7")
-texture_region_size = Vector2i(127, 111)
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_c3an2"]
+texture = ExtResource("2_uuaxm")
+texture_region_size = Vector2i(126, 110)
 0:0/0 = 0
-1:0/0 = 0
-0:1/0 = 0
-1:1/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_g245i"]
 tile_shape = 3
 tile_offset_axis = 1
-tile_size = Vector2i(127, 111)
-sources/0 = SubResource("TileSetAtlasSource_uuaxm")
+tile_size = Vector2i(126, 110)
+sources/0 = SubResource("TileSetAtlasSource_c3an2")
 
 [node name="Parent" type="Node2D"]
 script = ExtResource("1_uuaxm")

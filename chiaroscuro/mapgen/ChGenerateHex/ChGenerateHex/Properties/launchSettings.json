@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ChGenerateHex": {
+      "commandName": "Project",
+      "commandLineArgs": "0 0 true"
+    }
+  }
+}
