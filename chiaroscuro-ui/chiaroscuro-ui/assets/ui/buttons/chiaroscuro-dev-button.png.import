@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4pq4i08voexv"
-path="res://.godot/imported/chiaroscuro-hexmap.png-6f17f242d439ac69950b55872a068ce3.ctex"
+uid="uid://nqoivbnraw6i"
+path="res://.godot/imported/chiaroscuro-dev-button.png-f465aca3e947733c4d317e5d76dfedbc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/chiaroscuro-hexmap.png"
-dest_files=["res://.godot/imported/chiaroscuro-hexmap.png-6f17f242d439ac69950b55872a068ce3.ctex"]
+source_file="res://assets/ui/buttons/chiaroscuro-dev-button.png"
+dest_files=["res://.godot/imported/chiaroscuro-dev-button.png-f465aca3e947733c4d317e5d76dfedbc.ctex"]
 
 [params]
 
