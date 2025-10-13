@@ -11,6 +11,7 @@
     <Compile Include="..\..\..\..\lib\c-sharp\GeometryLib.cs" Link="GeometryLib.cs" />
     <Compile Include="..\..\..\..\lib\c-sharp\shared data\Point.cs" Link="Point.cs" />
     <Compile Include="..\..\..\chiaroscuro libs\data\ChPoint.cs" Link="ChPoint.cs" />
+    <Compile Include="..\..\..\chiaroscuro libs\data\ChPointSerializeJSON.cs" Link="ChPointSerializeJSON.cs" />
     <Compile Include="..\..\..\chiaroscuro libs\data\Hex.cs" Link="Hex.cs" />
     <Compile Include="..\..\..\chiaroscuro libs\draw\ChDrawHex.cs" Link="ChDrawHex.cs" />
   </ItemGroup>

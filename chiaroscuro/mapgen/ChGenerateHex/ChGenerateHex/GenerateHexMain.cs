@@ -30,7 +30,7 @@ class GenerateHexMain
         int originY = int.Parse(args[1]);
         bool debug = bool.Parse(args[2]);
 
-        List<(int, int)> hexPoints = Geometry.generateHexagonPoints((originX, originY), 126.0, 110.0);
+        List<(int, int)> hexPoints = Geometry.generateHexagonPoints((originX, originY), 100, 85);
 
         HashSet<ChPoint> chPoints = new HashSet<ChPoint>();
         for (int i = 0; i < hexPoints.Count; i++)
@@ -41,6 +41,10 @@ class GenerateHexMain
         Hex newHex = new Hex(chPoints, (originX, originY));
 
         Console.WriteLine(newHex);
+        Console.WriteLine($"Normalized Bounds: (0,0) to ({newHex.getNormalizedBounds().Item1}, {newHex.getNormalizedBounds().Item2})");
+        Console.WriteLine($"Min X: {newHex.getHexBounds().Item1.Item1} Max X: {newHex.getHexBounds().Item2.Item1}");
+        Console.WriteLine($"Min Y: {newHex.getHexBounds().Item1.Item2} Max Y: {newHex.getHexBounds().Item2.Item2}");
+        Console.WriteLine(ChPointSerializeJSON.serializeChPointJSON(newHex.Points, (originX, originY)));
 
 
         if (debug) {
@@ -48,5 +52,6 @@ class GenerateHexMain
             Console.WriteLine($"Hex Bounds: Top Left ({hexBounds.Item1.Item1}, {hexBounds.Item1.Item2}) Bottom Right ({hexBounds.Item2.Item1}, {hexBounds.Item2.Item2})");
             ChDrawHex.drawHexBounds(newHex, debugImageDirectory + "\\hex-bounds.png");
         }
+
     }
 }

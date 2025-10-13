@@ -73,10 +73,10 @@ namespace MapData
 
         private void calculateHexBounds()
         {
-            int minX = points.Min(p => p.X);
-            int maxX = points.Max(p => p.X);
-            int minY = points.Min(p => p.Y);
-            int maxY = points.Max(p => p.Y);
+            int minX = getMinX();
+            int maxX = getMaxX();
+            int minY = getMinY();
+            int maxY = getMaxY();
 
             topLeftBounds = (minX, minY);
             bottomRightBounds = (maxX, maxY);
@@ -87,6 +87,23 @@ namespace MapData
         public (int, int) getNormalizedBounds()
         {
             return normalizedBottomRightBounds;
+        }
+
+        private int getMinX()
+        {
+            return points.Min(p => p.X);
+        }
+        private int getMaxX()
+        {
+            return points.Max(p => p.X);
+        }
+        private int getMinY()
+        {
+            return points.Min(p => p.Y);
+        }
+        private int getMaxY()
+        {
+            return points.Max(p => p.Y);
         }
 
         private void calculateNormalizedBounds()

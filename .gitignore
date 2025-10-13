@@ -54,7 +54,7 @@ chiaroscuro/mapgen/ChGenerateHex/.vs
 *.bak
 
 /fantasy-colonialism-mapgen/.vs/
-
+/chiaroscuro/mapgen/img/
 # Godot 4+ specific ignores
 .godot/
 /android/
