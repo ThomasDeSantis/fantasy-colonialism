@@ -1,4 +1,5 @@
 ﻿using ChGenerateHex;
+using Libraries;
 using MapData;
 using System;
 using System.Reflection.Metadata;
@@ -47,11 +48,26 @@ class GenerateHexMain
         Console.WriteLine(ChPointSerializeJSON.serializeChPointJSON(newHex.Points, (originX, originY)));
 
 
-        if (debug) {
+        if (debug)
+        {
             ((int, int), (int, int)) hexBounds = newHex.getHexBounds();
             Console.WriteLine($"Hex Bounds: Top Left ({hexBounds.Item1.Item1}, {hexBounds.Item1.Item2}) Bottom Right ({hexBounds.Item2.Item1}, {hexBounds.Item2.Item2})");
             ChDrawHex.drawHexBounds(newHex, debugImageDirectory + "\\hex-bounds.png");
         }
+
+        AppSettings config = new AppSettings("C:\\Users\\Thomas\\Documents\\fantasy-colonialism", "appsettings.json");
+        string connectionString = config.getSqlConnectionString("DefaultConnection");
+        Console.WriteLine($"Connection String: {connectionString}");
+
+        var dbCon = DBConnection.Instance();
+        if (dbCon.IsConnect(connectionString))
+        {
+            Console.WriteLine("Database connection successful.");
+        }
+    }
+
+    public static void writeHexToDB()
+    {
 
     }
 }
