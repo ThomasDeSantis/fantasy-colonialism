@@ -2,7 +2,9 @@
 CREATE TABLE "ChHexes" (
     id int NOT NULL PRIMARY KEY,
     xOrigin numeric NOT NULL, -- X coordinate of the point in the view.
-    yOrigin numeric NOT NULL -- Y coordinate of the point in the view.
+    yOrigin numeric NOT NULL, -- Y coordinate of the point in the view.
+    clientHexXOrigin numeric NOT NULL,
+    clientHexYOrigin numeric NOT NULL
 );
 
 --Tables specific to the chiaroscuro subproject
