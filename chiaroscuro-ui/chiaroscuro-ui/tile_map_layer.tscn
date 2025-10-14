@@ -1,19 +1,24 @@
-[gd_scene load_steps=6 format=3 uid="uid://j61d8qj4spu"]
+[gd_scene load_steps=9 format=3 uid="uid://j61d8qj4spu"]
 
 [ext_resource type="Script" uid="uid://dpyr14qxjqc0l" path="res://scripts/ChRenderHexGrid.gd" id="1_uuaxm"]
-[ext_resource type="Texture2D" uid="uid://ctu7t1lpbal8t" path="res://assets/hex-bounds.png" id="2_uuaxm"]
+[ext_resource type="Texture2D" uid="uid://bp5mgt0041w4l" path="res://assets/hex-bounds.png" id="2_uuaxm"]
 [ext_resource type="Script" path="res://scripts/ChCameraInput.gd" id="3_c3an2"]
+[ext_resource type="Theme" uid="uid://4vhc0wwsbmlo" path="res://resources/Default UI.tres" id="4_c3an2"]
+[ext_resource type="Script" uid="uid://bniga0jobnxo6" path="res://scripts/RenderPanelFromButton.gd" id="5_vjcy3"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_c3an2"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_uuaxm"]
 texture = ExtResource("2_uuaxm")
-texture_region_size = Vector2i(126, 110)
+texture_region_size = Vector2i(100, 85)
 0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_g245i"]
 tile_shape = 3
 tile_offset_axis = 1
-tile_size = Vector2i(126, 110)
-sources/0 = SubResource("TileSetAtlasSource_c3an2")
+tile_size = Vector2i(100, 85)
+sources/10 = SubResource("TileSetAtlasSource_uuaxm")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bik5n"]
+bg_color = Color(0.117326416, 0.38197735, 0.6615012, 1)
 
 [node name="Parent" type="Node2D"]
 script = ExtResource("1_uuaxm")
@@ -27,3 +32,34 @@ tile_set = SubResource("TileSet_g245i")
 [node name="Camera2D" type="Camera2D" parent="Input"]
 position = Vector2(576, 324)
 script = ExtResource("3_c3an2")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="Input"]
+
+[node name="DevSidePanel" type="PanelContainer" parent="Input/CanvasLayer"]
+visible = false
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Input/CanvasLayer/DevSidePanel"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Input/CanvasLayer/DevSidePanel/MarginContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="Input/CanvasLayer/DevSidePanel/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bik5n")
+
+[node name="DevMenuButton" type="Button" parent="Input/CanvasLayer" node_paths=PackedStringArray("target_panel")]
+offset_right = 32.0
+offset_bottom = 32.0
+focus_mode = 0
+theme = ExtResource("4_c3an2")
+text = "D"
+script = ExtResource("5_vjcy3")
+target_panel = NodePath("../DevSidePanel")
