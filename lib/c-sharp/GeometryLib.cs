@@ -1,6 +1,7 @@
 ﻿using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 // Provides helpers for constructing geometric primitives used in the project.
 public static class Geometry
@@ -74,5 +75,12 @@ public static class Geometry
         if (Inside(px + 0.5, py)) insideCount++;
 
         return insideCount >= 1;
+    }
+
+    private static (int,int) hexCoordsToPointCoords((int x, int y) hexCoords, int diameter, int height)
+    {
+        int x = (int)Math.Ceiling(0.75f * (float)diameter * (float)hexCoords.x);
+        int y = (int)Math.Ceiling(height * ((float)hexCoords.y + 0.5f * (float) height));
+        return (x, y);
     }
 }

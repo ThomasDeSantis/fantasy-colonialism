@@ -24,7 +24,14 @@ namespace ChGenerateHex
                     {
                         if(hex.containsPointNormalized((x, y)))
                         {
-                            image[x, y] = Color.Red;
+                            if (y % 2 == 0)
+                            {
+                                image[x, y] = Color.Blue;
+                            }
+                            else
+                            {
+                                image[x, y] = Color.Green;
+                            }
                         }
                             
                     }
