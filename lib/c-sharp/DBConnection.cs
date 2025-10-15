@@ -1,7 +1,7 @@
 ﻿using Npgsql;
 using System.Text;
 
-namespace Libraries
+namespace DatabaseLibraries
 {
     public class DBConnection
     {

@@ -9,6 +9,7 @@ namespace MapData
     {
         private int id = -1;
         private (int, int) origin;
+        private (int, int) clientOrigin;
         private HashSet<ChPoint> points;
 
         private (int,int) topLeftBounds;
@@ -26,10 +27,11 @@ namespace MapData
         public (int,int) NormalizedBottomRightBounds { get => normalizedBottomRightBounds; }//Top left will always be 0,0
 
 
-        public Hex(HashSet<ChPoint> points, (int, int) origin)
+        public Hex(HashSet<ChPoint> points, (int,int) origin, (int, int) clientOrigin)
         {
             this.points = points;
             this.origin = (origin.Item1, origin.Item2);
+            this.clientOrigin = (clientOrigin.Item1, clientOrigin.Item2);   
 
             //Used to mark as unset
             calculateHexBounds();
@@ -114,10 +116,15 @@ namespace MapData
                 y: initialBounds.Item2.Item2 - initialBounds.Item1.Item2);
         }
 
-        
+        public static (int, int) hexCoordsToPointCoords((int x, int y) hexCoords, int diameter, int height)
+        {
+            int x = (int)Math.Ceiling(0.75f * (float)diameter * (float)hexCoords.x);
+            int y = (int)Math.Ceiling(height * ((float)hexCoords.y + 0.5f * (float)height));
+            return (x, y);
+        }
 
 
-        
+
 
     }
 

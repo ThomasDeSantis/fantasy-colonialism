@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DatabaseLibraries;
 
 namespace MapData
 {
-    class static Point
+    static class PointDBLib
     {
        
         //Returns the closest point to the given point within the given province

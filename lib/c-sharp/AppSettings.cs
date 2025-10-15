@@ -12,6 +12,7 @@ namespace Libraries
         public AppSettings(string appsettingsBasePath, string fileName)
         {
             builder = new ConfigurationBuilder().SetBasePath(appsettingsBasePath).AddJsonFile("appsettings.json");
+            Console.WriteLine(builder);
             config = builder.Build();
         }
         public string getSqlConnectionString(string connectionString)
